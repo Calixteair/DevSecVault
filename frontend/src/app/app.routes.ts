@@ -8,6 +8,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/secure-bridge/secret-viewer.component').then(m => m.SecretViewerComponent),
   },
   {
+    path: 'invite/:token',
+    loadComponent: () => import('./features/teams/invite-landing.component').then(m => m.InviteLandingComponent),
+  },
+  {
     path: '',
     loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),
     children: [
@@ -27,6 +31,10 @@ export const routes: Routes = [
       {
         path: 'secure-bridge',
         loadComponent: () => import('./features/secure-bridge/secure-bridge.component').then(m => m.SecureBridgeComponent),
+      },
+      {
+        path: 'teams',
+        loadChildren: () => import('./features/teams/teams.routes').then(m => m.teamsRoutes),
       },
       {
         path: 'it-tools',

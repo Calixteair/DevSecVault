@@ -26,16 +26,44 @@ import {
   Variable,
   Eye,
   Plus,
+  Users,
+  X,
 } from 'lucide-angular';
 import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Concept, Snippet } from '../../core/models/concept.model';
+import { TeamSummary } from '../../core/models/team.model';
 
-const icons = { Code, Copy, Check, Edit3, Save, Trash2, Terminal, Variable, Eye, Plus };
+const icons = { Code, Copy, Check, Edit3, Save, Trash2, Terminal, Variable, Eye, Plus, Users, X };
 
 interface TemplateVariable {
   name: string;
   value: string;
+}
+
+/**
+ * Projection of a shared team with a per-user `canUnshare` flag. Computed by
+ * the parent (concept owner OR lead of that team). The editor just renders.
+ */
+export interface SharedTeamView {
+  id: string;
+  name: string;
+  canUnshare: boolean;
+}
+
+/**
+ * Payload emitted by the editor's Save button in edit mode. Carries both the
+ * code change (if any) and all metadata fields. The parent is responsible for
+ * diffing this against the current concept and issuing the right HTTP calls.
+ */
+export interface ConceptEditPayload {
+  snippetId?: string;
+  code?: string;
+  title: string;
+  description: string | null;
+  visibility: 'public' | 'private' | 'team';
+  tags: string[];
+  sharedTeamIds?: string[];
 }
 
 @Component({
@@ -69,7 +97,7 @@ interface TemplateVariable {
         <div class="header-actions">
           @if (canModify) {
             @if (isEditing()) {
-              <button class="btn btn-primary" (click)="onSave()">
+              <button class="btn btn-primary" [disabled]="!canSaveEdits()" (click)="onSave()">
                 <lucide-icon name="save" [size]="14" [strokeWidth]="2"></lucide-icon>
                 Save
               </button>
@@ -98,6 +126,103 @@ interface TemplateVariable {
           </button>
         </div>
       </div>
+
+      <!-- Metadata edit card (only in edit mode) -->
+      @if (isEditing() && canModify) {
+        <div class="meta-edit-card">
+          <h3 class="meta-edit-title font-mono">CONCEPT METADATA</h3>
+          <div class="meta-grid">
+            <div class="form-group form-group-span">
+              <label class="form-label font-mono">TITLE</label>
+              <input class="form-input" type="text" [(ngModel)]="editTitle" />
+            </div>
+            <div class="form-group form-group-span">
+              <label class="form-label font-mono">DESCRIPTION</label>
+              <textarea class="form-textarea" rows="2" [(ngModel)]="editDescription"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label font-mono">VISIBILITY</label>
+              <select class="form-select" [(ngModel)]="editVisibility">
+                <option value="private">Private</option>
+                <option value="public">Public</option>
+                <option value="team" [disabled]="availableTeams().length === 0">Team</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label font-mono">TAGS (comma-separated)</label>
+              <input
+                class="form-input font-mono"
+                type="text"
+                placeholder="e.g. algorithm, sorting, recursion"
+                [(ngModel)]="editTagsRaw"
+              />
+            </div>
+            @if (editVisibility === 'team') {
+              <div class="form-group form-group-span">
+                <label class="form-label font-mono">
+                  <lucide-icon name="users" [size]="12" [strokeWidth]="2"></lucide-icon>
+                  SHARE WITH TEAMS
+                </label>
+                @if (availableTeams().length === 0) {
+                  <p class="form-hint form-hint-warn">You are not a member of any team yet.</p>
+                } @else {
+                  <div class="team-picker">
+                    @for (team of availableTeams(); track team.id) {
+                      <label class="team-option">
+                        <input
+                          type="checkbox"
+                          [checked]="editTeamIds.has(team.id)"
+                          (change)="toggleEditTeam(team.id, $event)"
+                        />
+                        <span class="team-option-name">{{ team.name }}</span>
+                        <span class="team-option-meta font-mono">
+                          {{ team.memberCount }} {{ team.memberCount === 1 ? 'member' : 'members' }}
+                          @if (team.role === 'lead') { · LEAD }
+                        </span>
+                      </label>
+                    }
+                  </div>
+                  @if (editTeamIds.size === 0) {
+                    <p class="form-hint form-hint-error">
+                      Select at least one team to share with.
+                    </p>
+                  }
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Shared Teams (visibility='team') -->
+      @if (sharedTeams().length > 0 && !isEditing()) {
+        <div class="shared-teams-card">
+          <div class="shared-teams-header">
+            <lucide-icon name="users" [size]="14" [strokeWidth]="2" class="shared-teams-icon"></lucide-icon>
+            <h3 class="shared-teams-title font-mono">SHARED WITH</h3>
+            <span class="shared-teams-hint">
+              Team leads can unshare their team. Unsharing the last team flips this concept back to private.
+            </span>
+          </div>
+          <div class="shared-teams-list">
+            @for (team of sharedTeams(); track team.id) {
+              <span class="shared-team-chip">
+                <lucide-icon name="users" [size]="11" [strokeWidth]="2"></lucide-icon>
+                {{ team.name }}
+                @if (team.canUnshare) {
+                  <button
+                    class="shared-team-chip-unshare"
+                    (click)="confirmUnshare(team)"
+                    [title]="'Unshare from ' + team.name"
+                  >
+                    <lucide-icon name="x" [size]="10" [strokeWidth]="2.5"></lucide-icon>
+                  </button>
+                }
+              </span>
+            }
+          </div>
+        </div>
+      }
 
       <!-- Language Tabs -->
       @if (concept().snippets.length > 1 || (canModify && isEditing())) {
@@ -499,6 +624,202 @@ interface TemplateVariable {
     .variable-input:focus {
       border-color: var(--primary);
     }
+
+    /* Metadata edit card (edit mode) */
+    .meta-edit-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+    }
+    .meta-edit-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.08em;
+      margin: 0 0 0.75rem;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+    .form-group-span {
+      grid-column: 1 / -1;
+    }
+    .form-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--muted-foreground);
+      letter-spacing: 0.05em;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .form-input,
+    .form-select {
+      height: 2.375rem;
+      padding: 0 0.625rem;
+      background: var(--input-background);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--foreground);
+      font-size: 0.8125rem;
+      font-family: inherit;
+      outline: none;
+    }
+    .form-textarea {
+      padding: 0.5rem 0.625rem;
+      background: var(--input-background);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--foreground);
+      font-size: 0.8125rem;
+      font-family: inherit;
+      outline: none;
+      resize: vertical;
+      line-height: 1.5;
+    }
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      border-color: var(--primary);
+    }
+    .form-select {
+      cursor: pointer;
+    }
+    .form-hint {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin: 0;
+    }
+    .form-hint-error {
+      color: var(--destructive);
+    }
+    .form-hint-warn {
+      color: var(--muted-foreground);
+      font-style: italic;
+    }
+
+    /* Team picker (multi-select via checkboxes) */
+    .team-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-height: 12rem;
+      overflow-y: auto;
+      padding: 0.375rem;
+      background: var(--input-background);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .team-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.375rem 0.5rem;
+      border-radius: calc(var(--radius) - 2px);
+      cursor: pointer;
+      color: var(--foreground);
+      font-size: 0.8125rem;
+      transition: background-color 0.15s ease;
+    }
+    .team-option:hover {
+      background: var(--secondary);
+    }
+    .team-option input[type='checkbox'] {
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .team-option-name {
+      flex: 1;
+      font-weight: 500;
+    }
+    .team-option-meta {
+      font-size: 0.6875rem;
+      color: var(--muted-foreground);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    @media (max-width: 560px) {
+      .meta-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Shared teams (visibility='team') */
+    .shared-teams-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+    }
+    .shared-teams-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .shared-teams-icon {
+      color: var(--primary);
+    }
+    .shared-teams-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.08em;
+      margin: 0;
+    }
+    .shared-teams-hint {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin-left: auto;
+      line-height: 1.4;
+    }
+    .shared-teams-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+    }
+    .shared-team-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.5rem 0.25rem 0.625rem;
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+      color: var(--primary);
+      border-radius: var(--radius);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .shared-team-chip-unshare {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: currentColor;
+      cursor: pointer;
+      opacity: 0.7;
+      padding: 0;
+      transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    }
+    .shared-team-chip-unshare:hover {
+      background: var(--destructive);
+      color: var(--destructive-foreground);
+      opacity: 1;
+    }
+    @media (max-width: 560px) {
+      .shared-teams-hint { margin-left: 0; width: 100%; }
+    }
   `],
 })
 export class ConceptEditorComponent {
@@ -506,12 +827,26 @@ export class ConceptEditorComponent {
   readonly concept = input.required<Concept>();
   /** Language the user clicked in the sidebar; we select the matching snippet on change. */
   readonly preferredLanguage = input<string | null>(null);
+  /**
+   * Teams the concept is shared with, already projected by the parent with a
+   * per-user `canUnshare` flag. Empty when visibility !== 'team'.
+   */
+  readonly sharedTeams = input<SharedTeamView[]>([]);
+  /** Teams the user belongs to (for the share-with-teams multi-select). */
+  readonly availableTeams = input<TeamSummary[]>([]);
   @Input() canModify = false;
 
-  @Output() saveSnippet = new EventEmitter<{ snippetId: string; code: string }>();
+  /**
+   * Fires when the user clicks Save in edit mode. Carries the full set of
+   * editable fields; the parent PUTs /api/concepts/{id} then updates the
+   * current snippet body if the code changed.
+   */
+  @Output() saveConcept = new EventEmitter<ConceptEditPayload>();
   @Output() addSnippet = new EventEmitter<void>();
   @Output() deleteConcept = new EventEmitter<void>();
   @Output() deleteSnippet = new EventEmitter<Snippet>();
+  /** Fires with the team id the user wants to unshare this concept from. */
+  @Output() unshareTeam = new EventEmitter<string>();
 
   private readonly platformId = inject(PLATFORM_ID);
   private readonly confirmDialog = inject(ConfirmDialogService);
@@ -521,6 +856,15 @@ export class ConceptEditorComponent {
   readonly copySuccess = signal(false);
   private editedCode = '';
   readonly variableValues = signal<Map<string, string>>(new Map());
+
+  // Metadata edit buffers — populated by startEdit() from the current concept
+  // so the user can change title/description/visibility/tags/teams alongside
+  // the code in a single Save.
+  editTitle = '';
+  editDescription = '';
+  editVisibility: 'public' | 'private' | 'team' = 'private';
+  editTagsRaw = '';
+  editTeamIds = new Set<string>();
 
   constructor() {
     // Reset UI state whenever the concept or preferred language changes
@@ -586,6 +930,21 @@ export class ConceptEditorComponent {
     this.isEditing.set(false);
   }
 
+  async confirmUnshare(team: SharedTeamView): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const ok = await this.confirmDialog.confirm({
+      title: `Unshare from "${team.name}"?`,
+      message:
+        'The team will lose access to this concept. ' +
+        'If this is the last team, the concept flips back to private — ' +
+        'nothing is deleted.',
+      confirmLabel: 'Unshare',
+      cancelLabel: 'Cancel',
+      variant: 'destructive',
+    });
+    if (ok) this.unshareTeam.emit(team.id);
+  }
+
   async confirmDeleteConcept(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
     const ok = await this.confirmDialog.confirm({
@@ -611,7 +970,13 @@ export class ConceptEditorComponent {
   }
 
   startEdit(): void {
+    const concept = this.concept();
     this.editedCode = this.currentCode();
+    this.editTitle = concept.title;
+    this.editDescription = concept.description ?? '';
+    this.editVisibility = concept.visibility;
+    this.editTagsRaw = concept.tags.map(t => t.name).join(', ');
+    this.editTeamIds = new Set<string>((concept.sharedTeams ?? []).map(t => t.id));
     this.isEditing.set(true);
   }
 
@@ -623,11 +988,42 @@ export class ConceptEditorComponent {
     this.editedCode = code;
   }
 
+  /** Toggle a team checkbox in the edit-mode multi-select. */
+  toggleEditTeam(teamId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const next = new Set(this.editTeamIds);
+    if (checked) next.add(teamId);
+    else next.delete(teamId);
+    this.editTeamIds = next;
+  }
+
+  /** Guard for Save button — mirrors the backend visibility/team rule. */
+  canSaveEdits(): boolean {
+    if (!this.editTitle.trim()) return false;
+    if (this.editVisibility === 'team' && this.editTeamIds.size === 0) return false;
+    return true;
+  }
+
   onSave(): void {
+    if (!this.canSaveEdits()) return;
     const snippet = this.currentSnippet();
-    if (snippet?.id) {
-      this.saveSnippet.emit({ snippetId: snippet.id, code: this.editedCode });
+    const tags = this.editTagsRaw
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(s => s.length > 0);
+
+    const payload: ConceptEditPayload = {
+      snippetId: snippet?.id,
+      code: snippet?.id ? this.editedCode : undefined,
+      title: this.editTitle.trim(),
+      description: this.editDescription.trim() || null,
+      visibility: this.editVisibility,
+      tags,
+    };
+    if (this.editVisibility === 'team') {
+      payload.sharedTeamIds = Array.from(this.editTeamIds);
     }
+    this.saveConcept.emit(payload);
     this.isEditing.set(false);
   }
 

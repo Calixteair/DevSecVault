@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Payload;
+use App\Entity\TeamMember;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -60,16 +61,28 @@ class PayloadRepository extends ServiceEntityRepository
     }
 
     /**
-     * Public + own payloads for an authenticated user.
+     * Public + own payloads + team-shared payloads for an authenticated user.
      *
      * @return Payload[]
      */
     public function findVisibleToUser(User $user): array
     {
+        $sharedIdsDql = $this->getEntityManager()->createQueryBuilder()
+            ->select('p2share.id')
+            ->from(Payload::class, 'p2share')
+            ->innerJoin('p2share.sharedTeams', 'st')
+            ->innerJoin(TeamMember::class, 'tm', 'WITH', 'tm.team = st')
+            ->where('tm.user = :owner')
+            ->getDQL();
+
         return $this->createQueryBuilder('p')
             ->leftJoin('p.tags', 't')->addSelect('t')
             ->leftJoin('p.owner', 'o')->addSelect('o')
-            ->andWhere('p.owner = :owner OR p.visibility = :public')
+            ->andWhere(
+                'p.owner = :owner '
+                . 'OR p.visibility = :public '
+                . 'OR p.id IN (' . $sharedIdsDql . ')'
+            )
             ->setParameter('owner', $user->getId(), 'uuid')
             ->setParameter('public', 'public')
             ->orderBy('p.updatedAt', 'DESC')
@@ -78,9 +91,10 @@ class PayloadRepository extends ServiceEntityRepository
     }
 
     /**
-     * Fetch a payload only if the viewer is allowed to see it (public or owner).
-     * Used by the controller before running the Voter check to avoid leaking
-     * existence through 403 vs 404 timing.
+     * Fetch a payload only if the viewer is allowed to see it (public, owner,
+     * or member of a team the payload is shared with). Used by the controller
+     * before running the Voter check to avoid leaking existence through
+     * 403 vs 404 timing.
      */
     public function findOneByIdVisibleToUser(Uuid $id, ?User $user): ?Payload
     {
@@ -91,7 +105,19 @@ class PayloadRepository extends ServiceEntityRepository
             ->setParameter('id', $id, 'uuid');
 
         if ($user instanceof User) {
-            $qb->andWhere('p.owner = :owner OR p.visibility = :public')
+            $sharedIdsDql = $this->getEntityManager()->createQueryBuilder()
+                ->select('p2share.id')
+                ->from(Payload::class, 'p2share')
+                ->innerJoin('p2share.sharedTeams', 'st')
+                ->innerJoin(TeamMember::class, 'tm', 'WITH', 'tm.team = st')
+                ->where('tm.user = :owner')
+                ->getDQL();
+
+            $qb->andWhere(
+                'p.owner = :owner '
+                . 'OR p.visibility = :public '
+                . 'OR p.id IN (' . $sharedIdsDql . ')'
+            )
                 ->setParameter('owner', $user->getId(), 'uuid')
                 ->setParameter('public', 'public');
         } else {

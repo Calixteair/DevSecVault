@@ -9,7 +9,10 @@ use App\Entity\Snippet;
 use App\Entity\User;
 use App\Repository\ConceptRepository;
 use App\Repository\TagRepository;
+use App\Repository\TeamRepository;
+use App\Search\SnippetIndexer;
 use App\Security\Voter\ConceptVoter;
+use App\Service\TeamMembershipService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,9 +28,12 @@ final class ConceptController extends AbstractController
     public function __construct(
         private readonly ConceptRepository $conceptRepository,
         private readonly TagRepository $tagRepository,
+        private readonly TeamRepository $teamRepository,
+        private readonly TeamMembershipService $memberships,
         private readonly EntityManagerInterface $entityManager,
         private readonly SerializerInterface $serializer,
         private readonly ValidatorInterface $validator,
+        private readonly SnippetIndexer $snippetIndexer,
     ) {
     }
 
@@ -93,6 +99,12 @@ final class ConceptController extends AbstractController
         // Handle snippets
         $this->syncSnippets($concept, $payload['snippets'] ?? []);
 
+        // Handle team sharing (must happen after visibility is set)
+        $teamError = $this->applySharedTeamsOnCreate($concept, $user, $payload);
+        if ($teamError !== null) {
+            return $teamError;
+        }
+
         $errors = $this->validator->validate($concept);
         if (count($errors) > 0) {
             return $this->validationErrorResponse($errors);
@@ -122,6 +134,9 @@ final class ConceptController extends AbstractController
     {
         $this->denyAccessUnlessGranted(ConceptVoter::EDIT, $concept);
 
+        /** @var User $user */
+        $user = $this->getUser();
+
         $payload = $this->decodeJson($request);
         if ($payload instanceof JsonResponse) {
             return $payload;
@@ -147,6 +162,12 @@ final class ConceptController extends AbstractController
             $this->replaceSnippets($concept, $payload['snippets']);
         }
 
+        $sharedTeamsChanged = array_key_exists('sharedTeamIds', $payload);
+        $teamError = $this->applySharedTeamsOnUpdate($concept, $user, $payload);
+        if ($teamError !== null) {
+            return $teamError;
+        }
+
         $errors = $this->validator->validate($concept);
         if (count($errors) > 0) {
             return $this->validationErrorResponse($errors);
@@ -160,6 +181,13 @@ final class ConceptController extends AbstractController
         }
 
         $this->entityManager->flush();
+
+        // N:N collection changes alone don't trigger postUpdate on the owning
+        // entity. If the only dirty thing was sharedTeams, the listener didn't
+        // fire — reindex manually so Meilisearch `team_ids` stays in sync.
+        if ($sharedTeamsChanged) {
+            $this->snippetIndexer->indexConcept($concept);
+        }
 
         $data = $this->serializer->normalize($concept, 'json', ['groups' => ['concept:read']]);
 
@@ -176,6 +204,48 @@ final class ConceptController extends AbstractController
 
         $this->entityManager->remove($concept);
         $this->entityManager->flush();
+
+        return $this->json(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Remove a single team from this concept's shared list (soft-unshare).
+     *
+     * Authorised for the concept owner OR the lead of the named team. The
+     * resource is never deleted — when the last team is removed, visibility
+     * auto-flips from 'team' to 'private'.
+     */
+    #[Route('/{id}/teams/{teamId}', name: 'unshare_team', methods: ['DELETE'])]
+    public function unshareTeam(Concept $concept, string $teamId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted(ConceptVoter::UNSHARE_FROM_TEAM . ':' . $teamId, $concept);
+
+        $team = $this->teamRepository->findOneById($teamId);
+        if ($team === null || !$concept->isSharedWithTeam($team)) {
+            return $this->json(['error' => 'Team is not in the shared list.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $concept->removeSharedTeam($team);
+
+        // Auto-flip visibility to private when the last team share is removed.
+        // Setting a scalar field here ALSO ensures Doctrine marks the Concept
+        // as dirty so postUpdate fires and child snippets are reindexed. When
+        // only the M2M changes (visibility stays 'team'), postUpdate does NOT
+        // fire for N:N mutations — we force the reindex explicitly below.
+        $flipped = false;
+        if ($concept->getSharedTeams()->count() === 0 && $concept->getVisibility() === 'team') {
+            $concept->setVisibility('private');
+            $flipped = true;
+        }
+
+        $this->entityManager->flush();
+
+        // If the visibility change didn't trigger postUpdate (pure M2M mutation),
+        // reindex manually so the `team_ids` field in Meilisearch documents
+        // stays in sync with the new shared list.
+        if (!$flipped) {
+            $this->snippetIndexer->indexConcept($concept);
+        }
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
     }
@@ -304,6 +374,131 @@ final class ConceptController extends AbstractController
                 $concept->removeSnippet($snippet);
             }
         }
+    }
+
+    /**
+     * Apply `sharedTeamIds` on CREATE with strict consistency against visibility.
+     * Returns a JsonResponse on error, null on success.
+     */
+    private function applySharedTeamsOnCreate(Concept $concept, User $user, array $payload): ?JsonResponse
+    {
+        $hasKey = array_key_exists('sharedTeamIds', $payload);
+        $ids = $hasKey ? (array) $payload['sharedTeamIds'] : [];
+        $visibility = $concept->getVisibility();
+
+        // Inconsistent: team ids supplied but visibility is not 'team'
+        if ($hasKey && count($ids) > 0 && $visibility !== 'team') {
+            return $this->json(
+                ['error' => 'sharedTeamIds requires visibility=team.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        // 'team' visibility requires at least one shared team
+        if ($visibility === 'team' && count($ids) === 0) {
+            return $this->json(
+                ['error' => 'Team visibility requires at least one shared team.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        if (count($ids) === 0) {
+            return null;
+        }
+
+        return $this->assignSharedTeams($concept, $user, $ids);
+    }
+
+    /**
+     * Apply `sharedTeamIds` and/or visibility transitions on UPDATE.
+     * Returns a JsonResponse on error, null on success.
+     */
+    private function applySharedTeamsOnUpdate(Concept $concept, User $user, array $payload): ?JsonResponse
+    {
+        $hasKey = array_key_exists('sharedTeamIds', $payload);
+        $visibility = $concept->getVisibility();
+
+        // Explicit visibility flip to private/public clears shared teams.
+        if (array_key_exists('visibility', $payload) && in_array($visibility, ['private', 'public'], true)) {
+            foreach ($concept->getSharedTeams()->toArray() as $team) {
+                $concept->removeSharedTeam($team);
+            }
+        }
+
+        if ($hasKey) {
+            $ids = (array) $payload['sharedTeamIds'];
+
+            // Inconsistent: team ids supplied but visibility is not 'team'
+            if (count($ids) > 0 && $visibility !== 'team') {
+                return $this->json(
+                    ['error' => 'sharedTeamIds requires visibility=team.'],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+
+            // Reset the collection: remove all, then add the new set
+            foreach ($concept->getSharedTeams()->toArray() as $team) {
+                $concept->removeSharedTeam($team);
+            }
+
+            if (count($ids) > 0) {
+                $err = $this->assignSharedTeams($concept, $user, $ids);
+                if ($err !== null) {
+                    return $err;
+                }
+            }
+        }
+
+        // Soft-unshare semantics:
+        //  - If the caller explicitly sent sharedTeamIds=[] with visibility=team,
+        //    treat it as a full unshare and auto-flip visibility to 'private'.
+        //  - If visibility=team but no teams remain AND the caller did not send
+        //    sharedTeamIds, the state is invalid → 422.
+        if ($concept->getVisibility() === 'team' && $concept->getSharedTeams()->count() === 0) {
+            if ($hasKey) {
+                $concept->setVisibility('private');
+            } else {
+                return $this->json(
+                    ['error' => 'Team visibility requires at least one shared team.'],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Load teams, verify the user is a member of each, attach them to the concept.
+     *
+     * @param array<int, mixed> $teamIds
+     */
+    private function assignSharedTeams(Concept $concept, User $user, array $teamIds): ?JsonResponse
+    {
+        foreach ($teamIds as $teamId) {
+            if (!is_string($teamId) || $teamId === '') {
+                continue;
+            }
+
+            $team = $this->teamRepository->findOneById($teamId);
+            if ($team === null) {
+                return $this->json(
+                    ['error' => sprintf('Team %s not found.', $teamId)],
+                    Response::HTTP_NOT_FOUND,
+                );
+            }
+
+            if (!$this->memberships->isMember($user, $team)) {
+                return $this->json(
+                    ['error' => 'You can only share with teams you belong to.'],
+                    Response::HTTP_FORBIDDEN,
+                );
+            }
+
+            $concept->addSharedTeam($team);
+        }
+
+        return null;
     }
 
     /**

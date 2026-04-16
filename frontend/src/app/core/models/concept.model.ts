@@ -18,6 +18,12 @@ export interface ConceptOwner {
   username: string;
 }
 
+/** Shape returned inside `concept.sharedTeams[]` / `payload.sharedTeams[]`. */
+export interface SharedTeamRef {
+  id: string;
+  name: string;
+}
+
 export interface Concept {
   id: string;
   title: string;
@@ -28,6 +34,7 @@ export interface Concept {
   snippets: Snippet[];
   snippetCount?: number;
   teamId: string | null;
+  sharedTeams?: SharedTeamRef[];
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +48,7 @@ export interface ConceptListItem {
   tags: Tag[];
   snippetCount: number;
   languages: string[];
+  sharedTeams?: SharedTeamRef[];
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +59,8 @@ export interface CreateConceptPayload {
   visibility: 'public' | 'private' | 'team';
   tags?: string[];
   snippets?: { language: string; code: string; sortOrder: number }[];
+  /** Required (non-empty) when visibility='team'; omitted otherwise. */
+  sharedTeamIds?: string[];
 }
 
 export interface UpdateConceptPayload {
@@ -58,6 +68,8 @@ export interface UpdateConceptPayload {
   description?: string;
   visibility?: 'public' | 'private' | 'team';
   tags?: string[];
+  /** Include to replace the shared-teams set. Required when flipping to 'team'. */
+  sharedTeamIds?: string[];
 }
 
 export interface CreateSnippetPayload {

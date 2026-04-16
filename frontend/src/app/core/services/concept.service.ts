@@ -37,6 +37,14 @@ export class ConceptService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
+  /**
+   * Soft-unshare: remove a single team from this concept's shared list.
+   * Backend auto-flips visibility to 'private' when the last team is removed.
+   */
+  unshareFromTeam(conceptId: string, teamId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${conceptId}/teams/${teamId}`);
+  }
+
   addSnippet(conceptId: string, data: CreateSnippetPayload): Observable<Snippet> {
     return this.http.post<Snippet>(`${this.baseUrl}/${conceptId}/snippets`, data);
   }

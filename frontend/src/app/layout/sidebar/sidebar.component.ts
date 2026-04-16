@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, Signal, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   LucideAngularModule,
   LUCIDE_ICONS,
@@ -11,9 +12,18 @@ import {
   Hammer,
   Settings,
   User,
+  Users,
 } from 'lucide-angular';
+import { AuthService } from '../../core/services/auth.service';
 
-const icons = { LayoutDashboard, Code, Wrench, Send, Hammer, Settings, User };
+const icons = { LayoutDashboard, Code, Wrench, Send, Hammer, Settings, User, Users };
+
+interface NavItem {
+  path: string;
+  icon: string;
+  label: string;
+  requiresAuth?: boolean;
+}
 
 @Component({
   selector: 'app-sidebar',
@@ -28,7 +38,7 @@ const icons = { LayoutDashboard, Code, Wrench, Send, Hammer, Settings, User };
       </div>
 
       <div class="sidebar-nav">
-        @for (item of navItems; track item.path) {
+        @for (item of visibleNavItems(); track item.path) {
           <a
             [routerLink]="item.path"
             routerLinkActive="active"
@@ -121,11 +131,19 @@ const icons = { LayoutDashboard, Code, Wrench, Send, Hammer, Settings, User };
   `],
 })
 export class SidebarComponent {
-  readonly navItems = [
+  private readonly auth = inject(AuthService);
+  private readonly isAuthenticated: Signal<boolean> = toSignal(this.auth.isAuthenticated$, { initialValue: false });
+
+  readonly navItems: readonly NavItem[] = [
     { path: '/dashboard', icon: 'layout-dashboard', label: 'Dashboard' },
     { path: '/dev-library', icon: 'code', label: 'Dev Library' },
     { path: '/cyber-toolbox', icon: 'wrench', label: 'Cyber Toolbox' },
     { path: '/secure-bridge', icon: 'send', label: 'Secure Bridge' },
+    { path: '/teams', icon: 'users', label: 'Teams', requiresAuth: true },
     { path: '/it-tools', icon: 'hammer', label: 'IT Tools' },
   ];
+
+  readonly visibleNavItems = computed(() =>
+    this.navItems.filter(item => !item.requiresAuth || this.isAuthenticated())
+  );
 }

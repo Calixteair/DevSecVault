@@ -46,7 +46,7 @@ class SnippetIndexer
             // What users can type against
             'searchableAttributes' => ['title', 'description', 'language', 'tags'],
             // What the tenant token rules (and UI filters) can filter on
-            'filterableAttributes' => ['visibility', 'owner_id', 'language', 'tags', 'concept_id'],
+            'filterableAttributes' => ['visibility', 'owner_id', 'language', 'tags', 'concept_id', 'team_ids'],
             'sortableAttributes' => ['updated_at'],
             // Title matters more than a stray word in the description
             'rankingRules' => [
@@ -126,6 +126,14 @@ class SnippetIndexer
             $tags[] = $tag->getName();
         }
 
+        // Team scoping: inherit the parent Concept's sharedTeams so a Meili
+        // tenant-token filter `team_ids = "<tid>"` matches for every team the
+        // concept (and therefore every child snippet) is shared with.
+        $teamIds = [];
+        foreach ($concept->getSharedTeams() as $team) {
+            $teamIds[] = (string) $team->getId();
+        }
+
         return [
             'id' => (string) $snippet->getId(),
             'concept_id' => (string) $concept->getId(),
@@ -135,6 +143,7 @@ class SnippetIndexer
             'tags' => $tags,
             'visibility' => $concept->getVisibility(),
             'owner_id' => (string) $concept->getOwner()->getId(),
+            'team_ids' => $teamIds,
             'updated_at' => $snippet->getUpdatedAt()->getTimestamp(),
         ];
     }

@@ -46,10 +46,17 @@ class Concept
     #[Groups(['concept:list', 'concept:read'])]
     private User $owner;
 
-    // Team relation — placeholder as string until Team entity is created (Phase 6)
-    #[ORM\Column(type: UuidType::NAME, nullable: true)]
-    #[Groups(['concept:read'])]
-    private ?Uuid $teamId = null;
+    /**
+     * Teams this concept is shared with (owning side of the M2M).
+     *
+     * @var Collection<int, Team>
+     */
+    #[ORM\ManyToMany(targetEntity: Team::class, inversedBy: 'sharedConcepts')]
+    #[ORM\JoinTable(name: 'concept_team_share')]
+    #[ORM\JoinColumn(name: 'concept_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(name: 'team_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[Groups(['concept:read', 'concept:list'])]
+    private Collection $sharedTeams;
 
     /**
      * @var Collection<int, Tag>
@@ -79,6 +86,7 @@ class Concept
     {
         $this->tags = new ArrayCollection();
         $this->snippets = new ArrayCollection();
+        $this->sharedTeams = new ArrayCollection();
     }
 
     public function getId(): ?Uuid
@@ -134,16 +142,33 @@ class Concept
         return $this;
     }
 
-    public function getTeamId(): ?Uuid
+    /**
+     * @return Collection<int, Team>
+     */
+    public function getSharedTeams(): Collection
     {
-        return $this->teamId;
+        return $this->sharedTeams;
     }
 
-    public function setTeamId(?Uuid $teamId): static
+    public function addSharedTeam(Team $team): static
     {
-        $this->teamId = $teamId;
+        if (!$this->sharedTeams->contains($team)) {
+            $this->sharedTeams->add($team);
+        }
 
         return $this;
+    }
+
+    public function removeSharedTeam(Team $team): static
+    {
+        $this->sharedTeams->removeElement($team);
+
+        return $this;
+    }
+
+    public function isSharedWithTeam(Team $team): bool
+    {
+        return $this->sharedTeams->contains($team);
     }
 
     /**

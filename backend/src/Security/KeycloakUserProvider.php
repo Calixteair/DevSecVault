@@ -85,7 +85,10 @@ final readonly class KeycloakUserProvider implements UserProviderInterface
 
     /**
      * Map Keycloak realm roles to a single Symfony role.
-     * Priority: admin > team_lead > user.
+     * Priority: admin > user.
+     *
+     * ROLE_TEAM_LEAD is derived per-request from TeamMember rows, not from
+     * Keycloak realm roles. See User::getRoles().
      *
      * @param array<string, mixed> $claims
      */
@@ -99,10 +102,6 @@ final readonly class KeycloakUserProvider implements UserProviderInterface
 
         if (in_array('admin', $realmRoles, true) || in_array('ROLE_ADMIN', $realmRoles, true)) {
             return 'ROLE_ADMIN';
-        }
-
-        if (in_array('team_lead', $realmRoles, true) || in_array('ROLE_TEAM_LEAD', $realmRoles, true)) {
-            return 'ROLE_TEAM_LEAD';
         }
 
         return 'ROLE_USER';

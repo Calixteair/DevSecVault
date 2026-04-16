@@ -6,6 +6,8 @@ namespace App\Security\Voter;
 
 use App\Entity\Concept;
 use App\Entity\User;
+use App\Repository\TeamRepository;
+use App\Service\TeamMembershipService;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
@@ -13,9 +15,13 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 /**
  * Determines access to Concept entities based on ownership and visibility.
  *
- * - VIEW: owner, or visibility=public, or (visibility=team and user is team member — team check deferred to Phase 6)
- * - EDIT/DELETE: the owner, or an admin (admin only on PUBLIC concepts — never on private content per CC.md)
+ * - VIEW: owner, or visibility=public, or (visibility=team and user is member of any shared team)
+ * - EDIT/DELETE: owner only (plus admin on PUBLIC concepts). A team lead has
+ *   NO edit/delete authority over team-shared content — lead power is limited
+ *   to removing their own team from sharedTeams (UNSHARE_FROM_TEAM).
  * - CREATE: any authenticated user with ROLE_USER
+ * - UNSHARE_FROM_TEAM:<teamId>: owner of the concept, or lead of the named team.
+ *   The team must actually be in concept.sharedTeams; otherwise denied.
  */
 final class ConceptVoter extends Voter
 {
@@ -23,12 +29,25 @@ final class ConceptVoter extends Voter
     public const EDIT = 'CONCEPT_EDIT';
     public const DELETE = 'CONCEPT_DELETE';
     public const CREATE = 'CONCEPT_CREATE';
+    public const UNSHARE_FROM_TEAM = 'CONCEPT_UNSHARE_FROM_TEAM';
+
+    public function __construct(
+        private readonly TeamMembershipService $memberships,
+        private readonly TeamRepository $teamRepository,
+    ) {
+    }
 
     protected function supports(string $attribute, mixed $subject): bool
     {
         // CREATE doesn't require a subject
         if ($attribute === self::CREATE) {
             return true;
+        }
+
+        // UNSHARE_FROM_TEAM is encoded as "CONCEPT_UNSHARE_FROM_TEAM:<teamId>"
+        // because Symfony Voter signatures only carry (attribute, subject).
+        if (str_starts_with($attribute, self::UNSHARE_FROM_TEAM)) {
+            return $subject instanceof Concept;
         }
 
         return in_array($attribute, [self::VIEW, self::EDIT, self::DELETE], true)
@@ -47,6 +66,10 @@ final class ConceptVoter extends Voter
         /** @var Concept $concept */
         $concept = $subject;
         $user = $token->getUser();
+
+        if (str_starts_with($attribute, self::UNSHARE_FROM_TEAM)) {
+            return $this->canUnshareFromTeam($concept, $user, $attribute);
+        }
 
         return match ($attribute) {
             self::VIEW => $this->canView($concept, $user),
@@ -73,9 +96,9 @@ final class ConceptVoter extends Voter
             return true;
         }
 
-        // Team visibility — for now, only check ownership (team member check deferred to Phase 6)
+        // Team visibility: member of ANY team the concept is shared with
         if ($concept->getVisibility() === 'team') {
-            return false; // TODO: check team membership in Phase 6
+            return $this->memberships->isMemberOfAnySharedTeam($user, $concept->getSharedTeams());
         }
 
         return false;
@@ -91,14 +114,47 @@ final class ConceptVoter extends Voter
             return true;
         }
 
-        // Admins can moderate public content only — never private/team
+        // Admins can moderate public content only — never private/team.
+        // Team leads have NO edit power — confirmed owner-only rule.
         return $this->isAdmin($user) && $concept->getVisibility() === 'public';
     }
 
     private function canDelete(Concept $concept, mixed $user): bool
     {
-        // Same rules as edit
+        // Same rules as edit — owner or (admin && public). No lead override.
         return $this->canEdit($concept, $user);
+    }
+
+    private function canUnshareFromTeam(Concept $concept, mixed $user, string $attribute): bool
+    {
+        if (!$user instanceof User) {
+            return false;
+        }
+
+        // Parse teamId from "CONCEPT_UNSHARE_FROM_TEAM:<uuid>"
+        $parts = explode(':', $attribute, 2);
+        if (count($parts) !== 2 || $parts[1] === '') {
+            return false;
+        }
+        $teamId = $parts[1];
+
+        $team = $this->teamRepository->findOneById($teamId);
+        if ($team === null) {
+            return false;
+        }
+
+        // The team must actually be shared with this concept
+        if (!$concept->isSharedWithTeam($team)) {
+            return false;
+        }
+
+        // Owner can always unshare
+        if ($this->isOwner($concept, $user)) {
+            return true;
+        }
+
+        // Lead of the named team can revoke the share
+        return $this->memberships->isLead($user, $team);
     }
 
     private function isOwner(Concept $concept, User $user): bool

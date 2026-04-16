@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Entity\User;
+use App\Repository\TeamMemberRepository;
 use App\Search\MeilisearchClient;
 use App\Search\PayloadIndexer;
 use App\Search\SnippetIndexer;
@@ -29,6 +30,7 @@ final class SearchController extends AbstractController
 
     public function __construct(
         private readonly MeilisearchClient $meili,
+        private readonly TeamMemberRepository $teamMemberRepo,
     ) {
     }
 
@@ -54,28 +56,35 @@ final class SearchController extends AbstractController
      * Build per-index search rules.
      *
      * Guest: only public content.
-     * Authenticated: public content OR their own private content.
-     *   (Team scoping added in Phase 6 — just extend the filter then.)
+     * Authenticated: public content OR their own private content OR anything
+     * shared with a team they belong to. `team_ids` is an array attribute on
+     * each indexed document; Meilisearch's `=` operator against array fields
+     * matches any element, which is exactly the semantics we want.
      *
      * @return array<string, array<string, mixed>>
      */
     private function buildSearchRules(?object $user): array
     {
         if ($user instanceof User && $user->getId() !== null) {
-            $ownerFilter = sprintf(
-                'visibility = public OR owner_id = "%s"',
-                (string) $user->getId(),
-            );
+            $uid = (string) $user->getId();
+            $clauses = [
+                'visibility = public',
+                sprintf('owner_id = "%s"', $uid),
+            ];
+            foreach ($this->teamMemberRepo->findTeamsForUser($user) as $team) {
+                $clauses[] = sprintf('team_ids = "%s"', (string) $team->getId());
+            }
+            $filter = implode(' OR ', $clauses);
         } else {
-            $ownerFilter = 'visibility = public';
+            $filter = 'visibility = public';
         }
 
         return [
             SnippetIndexer::INDEX => [
-                'filter' => $ownerFilter,
+                'filter' => $filter,
             ],
             PayloadIndexer::INDEX => [
-                'filter' => $ownerFilter,
+                'filter' => $filter,
             ],
         ];
     }

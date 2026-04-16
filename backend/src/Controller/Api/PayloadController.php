@@ -9,9 +9,12 @@ use App\Entity\Tag;
 use App\Entity\User;
 use App\Repository\PayloadRepository;
 use App\Repository\TagRepository;
+use App\Repository\TeamRepository;
+use App\Search\PayloadIndexer;
 use App\Security\PayloadCipher;
 use App\Security\PayloadCipherException;
 use App\Security\Voter\PayloadVoter;
+use App\Service\TeamMembershipService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,10 +39,13 @@ final class PayloadController extends AbstractController
     public function __construct(
         private readonly PayloadRepository $payloadRepository,
         private readonly TagRepository $tagRepository,
+        private readonly TeamRepository $teamRepository,
+        private readonly TeamMembershipService $memberships,
         private readonly EntityManagerInterface $entityManager,
         private readonly SerializerInterface $serializer,
         private readonly ValidatorInterface $validator,
         private readonly PayloadCipher $cipher,
+        private readonly PayloadIndexer $payloadIndexer,
     ) {
     }
 
@@ -128,6 +134,11 @@ final class PayloadController extends AbstractController
 
         $this->syncTags($payload, $data['tags'] ?? []);
 
+        $teamError = $this->applySharedTeamsOnCreate($payload, $user, $data);
+        if ($teamError !== null) {
+            return $teamError;
+        }
+
         $errors = $this->validator->validate($payload);
         if (count($errors) > 0) {
             return $this->validationErrorResponse($errors);
@@ -150,6 +161,9 @@ final class PayloadController extends AbstractController
     public function update(Request $request, Payload $payload): JsonResponse
     {
         $this->denyAccessUnlessGranted(PayloadVoter::EDIT, $payload);
+
+        /** @var User $user */
+        $user = $this->getUser();
 
         $data = $this->decodeJson($request);
         if ($data instanceof JsonResponse) {
@@ -185,12 +199,25 @@ final class PayloadController extends AbstractController
             }
         }
 
+        $sharedTeamsChanged = array_key_exists('sharedTeamIds', $data);
+        $teamError = $this->applySharedTeamsOnUpdate($payload, $user, $data);
+        if ($teamError !== null) {
+            return $teamError;
+        }
+
         $errors = $this->validator->validate($payload);
         if (count($errors) > 0) {
             return $this->validationErrorResponse($errors);
         }
 
         $this->entityManager->flush();
+
+        // N:N collection mutations alone don't trigger postUpdate on the owning
+        // entity. If only sharedTeams changed, the listener didn't fire — reindex
+        // manually so Meilisearch `team_ids` stays in sync.
+        if ($sharedTeamsChanged) {
+            $this->payloadIndexer->indexPayload($payload);
+        }
 
         $out = $this->serializer->normalize($payload, 'json', ['groups' => ['payload:read']]);
         $out['body'] = $plaintext ?? $this->decryptBody($payload);
@@ -205,6 +232,46 @@ final class PayloadController extends AbstractController
 
         $this->entityManager->remove($payload);
         $this->entityManager->flush();
+
+        return $this->json(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Soft-unshare: remove a single team from the payload's shared list.
+     *
+     * Authorised for the owner OR the lead of the named team. When the last
+     * team is removed, visibility auto-flips from 'team' to 'private' — the
+     * payload is never deleted by an unshare.
+     */
+    #[Route('/{id}/teams/{teamId}', name: 'unshare_team', methods: ['DELETE'])]
+    public function unshareTeam(Payload $payload, string $teamId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted(PayloadVoter::UNSHARE_FROM_TEAM . ':' . $teamId, $payload);
+
+        $team = $this->teamRepository->findOneById($teamId);
+        if ($team === null || !$payload->isSharedWithTeam($team)) {
+            return $this->json(['error' => 'Team is not in the shared list.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $payload->removeSharedTeam($team);
+
+        // Auto-flip to private when the last team share is removed. Setting a
+        // scalar field makes Doctrine mark the Payload dirty so postUpdate fires.
+        // When only the M2M changes, postUpdate does NOT fire for N:N mutations,
+        // so we force the reindex explicitly below.
+        $flipped = false;
+        if ($payload->getSharedTeams()->count() === 0 && $payload->getVisibility() === 'team') {
+            $payload->setVisibility('private');
+            $flipped = true;
+        }
+
+        $this->entityManager->flush();
+
+        // If postUpdate didn't fire (pure M2M mutation), reindex manually so
+        // the `team_ids` field in Meilisearch stays consistent.
+        if (!$flipped) {
+            $this->payloadIndexer->indexPayload($payload);
+        }
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
     }
@@ -285,5 +352,119 @@ final class PayloadController extends AbstractController
         }
 
         return $this->json(['errors' => $messages], Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    /**
+     * Apply `sharedTeamIds` on CREATE with strict consistency against visibility.
+     */
+    private function applySharedTeamsOnCreate(Payload $payload, User $user, array $data): ?JsonResponse
+    {
+        $hasKey = array_key_exists('sharedTeamIds', $data);
+        $ids = $hasKey ? (array) $data['sharedTeamIds'] : [];
+        $visibility = $payload->getVisibility();
+
+        if ($hasKey && count($ids) > 0 && $visibility !== 'team') {
+            return $this->json(
+                ['error' => 'sharedTeamIds requires visibility=team.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        if ($visibility === 'team' && count($ids) === 0) {
+            return $this->json(
+                ['error' => 'Team visibility requires at least one shared team.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        if (count($ids) === 0) {
+            return null;
+        }
+
+        return $this->assignSharedTeams($payload, $user, $ids);
+    }
+
+    /**
+     * Apply `sharedTeamIds` / visibility transitions on UPDATE.
+     */
+    private function applySharedTeamsOnUpdate(Payload $payload, User $user, array $data): ?JsonResponse
+    {
+        $hasKey = array_key_exists('sharedTeamIds', $data);
+        $visibility = $payload->getVisibility();
+
+        // Explicit flip to private/public clears all shared teams.
+        if (array_key_exists('visibility', $data) && in_array($visibility, ['private', 'public'], true)) {
+            foreach ($payload->getSharedTeams()->toArray() as $team) {
+                $payload->removeSharedTeam($team);
+            }
+        }
+
+        if ($hasKey) {
+            $ids = (array) $data['sharedTeamIds'];
+
+            if (count($ids) > 0 && $visibility !== 'team') {
+                return $this->json(
+                    ['error' => 'sharedTeamIds requires visibility=team.'],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+
+            // Reset collection
+            foreach ($payload->getSharedTeams()->toArray() as $team) {
+                $payload->removeSharedTeam($team);
+            }
+
+            if (count($ids) > 0) {
+                $err = $this->assignSharedTeams($payload, $user, $ids);
+                if ($err !== null) {
+                    return $err;
+                }
+            }
+        }
+
+        // Soft-unshare auto-flip: empty team list + visibility=team
+        if ($payload->getVisibility() === 'team' && $payload->getSharedTeams()->count() === 0) {
+            if ($hasKey) {
+                $payload->setVisibility('private');
+            } else {
+                return $this->json(
+                    ['error' => 'Team visibility requires at least one shared team.'],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int, mixed> $teamIds
+     */
+    private function assignSharedTeams(Payload $payload, User $user, array $teamIds): ?JsonResponse
+    {
+        foreach ($teamIds as $teamId) {
+            if (!is_string($teamId) || $teamId === '') {
+                continue;
+            }
+
+            $team = $this->teamRepository->findOneById($teamId);
+            if ($team === null) {
+                return $this->json(
+                    ['error' => sprintf('Team %s not found.', $teamId)],
+                    Response::HTTP_NOT_FOUND,
+                );
+            }
+
+            if (!$this->memberships->isMember($user, $team)) {
+                return $this->json(
+                    ['error' => 'You can only share with teams you belong to.'],
+                    Response::HTTP_FORBIDDEN,
+                );
+            }
+
+            $payload->addSharedTeam($team);
+        }
+
+        return null;
     }
 }

@@ -51,7 +51,7 @@ class Payload
     private ?string $language = null;
 
     #[ORM\Column(type: Types::STRING, length: 20)]
-    #[Assert\Choice(choices: ['public', 'private'], message: 'Visibility must be public or private.')]
+    #[Assert\Choice(choices: ['public', 'private', 'team'], message: 'Visibility must be public, private, or team.')]
     #[Groups(['payload:list', 'payload:read', 'payload:write'])]
     private string $visibility = 'private';
 
@@ -67,6 +67,18 @@ class Payload
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['payload:list', 'payload:read'])]
     private User $owner;
+
+    /**
+     * Teams this payload is shared with (owning side of the M2M).
+     *
+     * @var Collection<int, Team>
+     */
+    #[ORM\ManyToMany(targetEntity: Team::class, inversedBy: 'sharedPayloads')]
+    #[ORM\JoinTable(name: 'payload_team_share')]
+    #[ORM\JoinColumn(name: 'payload_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(name: 'team_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[Groups(['payload:read', 'payload:list'])]
+    private Collection $sharedTeams;
 
     /**
      * @var Collection<int, Tag>
@@ -87,6 +99,7 @@ class Payload
     public function __construct()
     {
         $this->tags = new ArrayCollection();
+        $this->sharedTeams = new ArrayCollection();
     }
 
     public function getId(): ?Uuid
@@ -211,6 +224,35 @@ class Payload
         $this->tags->clear();
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Team>
+     */
+    public function getSharedTeams(): Collection
+    {
+        return $this->sharedTeams;
+    }
+
+    public function addSharedTeam(Team $team): static
+    {
+        if (!$this->sharedTeams->contains($team)) {
+            $this->sharedTeams->add($team);
+        }
+
+        return $this;
+    }
+
+    public function removeSharedTeam(Team $team): static
+    {
+        $this->sharedTeams->removeElement($team);
+
+        return $this;
+    }
+
+    public function isSharedWithTeam(Team $team): bool
+    {
+        return $this->sharedTeams->contains($team);
     }
 
     public function getCreatedAt(): \DateTimeImmutable

@@ -12,19 +12,23 @@ import {
   Trash2,
   AlertTriangle,
   BookOpen,
+  Users,
 } from 'lucide-angular';
 import { ConceptSidebarComponent } from './concept-sidebar.component';
-import { ConceptEditorComponent } from './concept-editor.component';
+import { ConceptEditorComponent, ConceptEditPayload } from './concept-editor.component';
 import { ConceptService } from '../../core/services/concept.service';
 import { AuthService } from '../../core/services/auth.service';
+import { TeamService } from '../../core/services/team.service';
 import {
   Concept,
   ConceptListItem,
   CreateConceptPayload,
   Snippet,
+  UpdateConceptPayload,
 } from '../../core/models/concept.model';
+import { TeamSummary } from '../../core/models/team.model';
 
-const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen };
+const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
 
 @Component({
   selector: 'app-dev-library',
@@ -57,10 +61,13 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen };
             [concept]="concept"
             [preferredLanguage]="preferredLanguage()"
             [canModify]="canModifySelected()"
-            (saveSnippet)="onSaveSnippet($event)"
+            [sharedTeams]="sharedTeamsView()"
+            [availableTeams]="teams()"
+            (saveConcept)="onSaveConcept($event)"
             (addSnippet)="openAddSnippetDialog()"
             (deleteConcept)="onDeleteConcept()"
             (deleteSnippet)="onDeleteSnippet($event)"
+            (unshareTeam)="onUnshareTeamFromConcept($event)"
           />
         } @else if (loading()) {
           <div class="loading-state">
@@ -124,8 +131,45 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen };
                 <select class="form-select" [(ngModel)]="newConceptVisibility">
                   <option value="private">Private</option>
                   <option value="public">Public</option>
+                  <option value="team" [disabled]="teams().length === 0">Team</option>
                 </select>
+                @if (newConceptVisibility === 'team' && teams().length === 0) {
+                  <p class="form-hint form-hint-warn">
+                    You are not a member of any team yet. Create or join a team first.
+                  </p>
+                }
               </div>
+              @if (newConceptVisibility === 'team' && teams().length > 0) {
+                <div class="form-group">
+                  <label class="form-label">
+                    <lucide-icon name="users" [size]="14" [strokeWidth]="2"></lucide-icon>
+                    Share with teams
+                  </label>
+                  <div class="team-picker">
+                    @for (team of teams(); track team.id) {
+                      <label class="team-option">
+                        <input
+                          type="checkbox"
+                          [checked]="newConceptTeamIds.has(team.id)"
+                          (change)="toggleNewConceptTeam(team.id, $event)"
+                        />
+                        <span class="team-option-name">{{ team.name }}</span>
+                        <span class="team-option-meta font-mono">
+                          {{ team.memberCount }} {{ team.memberCount === 1 ? 'member' : 'members' }}
+                          @if (team.role === 'lead') {
+                            · LEAD
+                          }
+                        </span>
+                      </label>
+                    }
+                  </div>
+                  @if (newConceptTeamIds.size === 0) {
+                    <p class="form-hint form-hint-error">
+                      Select at least one team to share with.
+                    </p>
+                  }
+                </div>
+              }
               <div class="form-group">
                 <label class="form-label">First Snippet — Language</label>
                 <input
@@ -149,7 +193,7 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen };
               <button class="btn btn-ghost" (click)="closeCreateDialog()">Cancel</button>
               <button
                 class="btn btn-primary"
-                [disabled]="!newConceptTitle.trim() || !newSnippetLanguage.trim()"
+                [disabled]="!canSubmitNewConcept()"
                 (click)="createConcept()"
               >
                 <lucide-icon name="plus" [size]="14" [strokeWidth]="2"></lucide-icon>
@@ -442,6 +486,126 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen };
       cursor: pointer;
       appearance: auto;
     }
+    .form-hint {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin: 0;
+    }
+    .form-hint-error {
+      color: var(--destructive);
+    }
+    .form-hint-warn {
+      color: var(--muted-foreground);
+      font-style: italic;
+    }
+
+    /* Team picker (multi-select via checkboxes) */
+    .team-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-height: 12rem;
+      overflow-y: auto;
+      padding: 0.375rem;
+      background: var(--input-background);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .team-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.375rem 0.5rem;
+      border-radius: calc(var(--radius) - 2px);
+      cursor: pointer;
+      color: var(--foreground);
+      font-size: 0.8125rem;
+      transition: background-color 0.15s ease;
+    }
+    .team-option:hover {
+      background: var(--secondary);
+    }
+    .team-option input[type='checkbox'] {
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .team-option-name {
+      flex: 1;
+      font-weight: 500;
+    }
+    .team-option-meta {
+      font-size: 0.6875rem;
+      color: var(--muted-foreground);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    /* Shared teams on the editor */
+    .shared-teams-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+    }
+    .shared-teams-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .shared-teams-icon {
+      color: var(--primary);
+    }
+    .shared-teams-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.08em;
+      margin: 0;
+      text-transform: uppercase;
+    }
+    .shared-teams-hint {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin-left: auto;
+    }
+    .shared-teams-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .shared-team-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.5rem 0.25rem 0.625rem;
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+      color: var(--primary);
+      border-radius: var(--radius);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .shared-team-chip-unshare {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: currentColor;
+      cursor: pointer;
+      opacity: 0.7;
+      padding: 0;
+      transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    }
+    .shared-team-chip-unshare:hover {
+      background: var(--destructive);
+      color: var(--destructive-foreground);
+      opacity: 1;
+    }
 
     /* Error Toast */
     .error-toast {
@@ -478,6 +642,7 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen };
 export class DevLibraryComponent implements OnInit {
   readonly conceptService = inject(ConceptService);
   readonly auth = inject(AuthService);
+  readonly teamService = inject(TeamService);
   private readonly platformId = inject(PLATFORM_ID);
 
   readonly concepts = signal<ConceptListItem[]>([]);
@@ -488,11 +653,15 @@ export class DevLibraryComponent implements OnInit {
   readonly errorMessage = signal('');
   readonly showCreateDialog = signal(false);
   readonly showAddSnippetDialog = signal(false);
+  /** Teams the current user belongs to, used for the sharing multi-select. */
+  readonly teams = signal<TeamSummary[]>([]);
 
   // Create form fields
   newConceptTitle = '';
   newConceptDescription = '';
-  newConceptVisibility: 'public' | 'private' = 'private';
+  newConceptVisibility: 'public' | 'private' | 'team' = 'private';
+  /** Chosen team IDs for the create dialog when visibility='team'. */
+  newConceptTeamIds = new Set<string>();
   newSnippetLanguage = '';
   newSnippetCode = '';
 
@@ -512,6 +681,51 @@ export class DevLibraryComponent implements OnInit {
     return this.isAdmin() && concept.visibility === 'public';
   });
 
+  /**
+   * IDs of teams the current user leads, computed from the teams list.
+   * Used to decide whether to show per-team "unshare" buttons on a concept
+   * whose owner is someone else but which is shared with a team we lead.
+   */
+  readonly myLeadTeamIds = computed(() => {
+    const ids = new Set<string>();
+    for (const t of this.teams()) {
+      if (t.role === 'lead') ids.add(t.id);
+    }
+    return ids;
+  });
+
+  /**
+   * Visible shared teams on the detail view + whether each can be unshared by
+   * the current user. Rule: the concept owner can unshare any team; a team's
+   * lead can unshare their own team.
+   */
+  readonly sharedTeamsView = computed(() => {
+    const concept = this.selectedConcept();
+    if (!concept || concept.visibility !== 'team') return [];
+    const teams = concept.sharedTeams ?? [];
+    if (teams.length === 0) return [];
+    const isOwner = this.canModifySelected();
+    const leadIds = this.myLeadTeamIds();
+    return teams.map(t => ({
+      id: t.id,
+      name: t.name,
+      canUnshare: isOwner || leadIds.has(t.id),
+    }));
+  });
+
+  /**
+   * Valid form state for the create dialog. When visibility='team', at least
+   * one team must be selected — mirrors the backend constraint.
+   * Plain getter (not a computed) since the form fields are plain class
+   * properties driven by `[(ngModel)]`, which triggers Angular's change
+   * detection directly on the template.
+   */
+  canSubmitNewConcept(): boolean {
+    if (!this.newConceptTitle.trim() || !this.newSnippetLanguage.trim()) return false;
+    if (this.newConceptVisibility === 'team' && this.newConceptTeamIds.size === 0) return false;
+    return true;
+  }
+
   constructor() {
     this.auth.userData$.subscribe(user => {
       this.currentUsername.set(user?.username ?? null);
@@ -519,12 +733,27 @@ export class DevLibraryComponent implements OnInit {
     this.auth.isAdmin$.subscribe(isAdmin => {
       this.isAdmin.set(isAdmin);
     });
+    // Refresh the teams list whenever auth status changes so the sharing
+    // multi-select and the "unshare" buttons react to login/logout.
+    this.auth.isAuthenticated$.subscribe(isAuth => {
+      if (isAuth) this.loadTeams();
+      else this.teams.set([]);
+    });
   }
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadConcepts();
     }
+  }
+
+  private loadTeams(): void {
+    this.teamService.list().subscribe({
+      next: teams => this.teams.set(teams),
+      error: () => {
+        /* silent — sharing simply won't be available until teams load */
+      },
+    });
   }
 
   loadConcepts(): void {
@@ -561,19 +790,54 @@ export class DevLibraryComponent implements OnInit {
     });
   }
 
-  onSaveSnippet(event: { snippetId: string; code: string }): void {
-    this.conceptService.updateSnippet(event.snippetId, { code: event.code }).subscribe({
+  /**
+   * Save the concept's metadata (title/description/visibility/tags/teams)
+   * plus the currently-open snippet's code in a single Save action. The
+   * metadata update always runs; the snippet update only when we have a
+   * snippet id + a code field (otherwise it's a new concept with no snippet
+   * yet, which shouldn't reach this path).
+   */
+  onSaveConcept(event: ConceptEditPayload): void {
+    const concept = this.selectedConcept();
+    if (!concept) return;
+
+    const metadata: UpdateConceptPayload = {
+      title: event.title,
+      description: event.description ?? undefined,
+      visibility: event.visibility,
+      tags: event.tags,
+    };
+    if (event.visibility === 'team') {
+      metadata.sharedTeamIds = event.sharedTeamIds ?? [];
+    }
+
+    this.conceptService.updateConcept(concept.id, metadata).subscribe({
       next: () => {
-        // Refresh the selected concept
-        const concept = this.selectedConcept();
-        if (concept) {
-          this.conceptService.getConcept(concept.id).subscribe({
-            next: (updated) => this.selectedConcept.set(updated),
+        // If a snippet body change was included, push it next.
+        if (event.snippetId && event.code !== undefined) {
+          this.conceptService.updateSnippet(event.snippetId, { code: event.code }).subscribe({
+            next: () => this.refreshSelected(concept.id),
+            error: () => this.showError('Failed to save snippet.'),
           });
+        } else {
+          this.refreshSelected(concept.id);
         }
       },
+      error: () => this.showError('Failed to save concept.'),
+    });
+  }
+
+  /** Refetch the currently-selected concept + the list (both can have changed). */
+  private refreshSelected(id: string): void {
+    this.conceptService.getConcept(id).subscribe({
+      next: (updated) => {
+        this.selectedConcept.set(updated);
+        this.loadConcepts();
+      },
       error: () => {
-        this.showError('Failed to save snippet.');
+        // Lost read access (e.g. made it private from a team we don't own).
+        this.selectedConcept.set(null);
+        this.loadConcepts();
       },
     });
   }
@@ -582,8 +846,12 @@ export class DevLibraryComponent implements OnInit {
     this.newConceptTitle = '';
     this.newConceptDescription = '';
     this.newConceptVisibility = 'private';
+    this.newConceptTeamIds = new Set<string>();
     this.newSnippetLanguage = '';
     this.newSnippetCode = '// Your code here...';
+    // Make sure the teams list is fresh when the dialog opens — the user
+    // might have created a team since the last page load.
+    this.loadTeams();
     this.showCreateDialog.set(true);
   }
 
@@ -591,8 +859,17 @@ export class DevLibraryComponent implements OnInit {
     this.showCreateDialog.set(false);
   }
 
+  /** Toggle a team's checkbox in the create dialog's multi-select. */
+  toggleNewConceptTeam(teamId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const next = new Set(this.newConceptTeamIds);
+    if (checked) next.add(teamId);
+    else next.delete(teamId);
+    this.newConceptTeamIds = next;
+  }
+
   createConcept(): void {
-    if (!this.newConceptTitle.trim() || !this.newSnippetLanguage.trim()) return;
+    if (!this.canSubmitNewConcept()) return;
 
     const payload: CreateConceptPayload = {
       title: this.newConceptTitle.trim(),
@@ -607,6 +884,12 @@ export class DevLibraryComponent implements OnInit {
       ],
     };
 
+    // Only include sharedTeamIds when visibility='team' — the backend rejects
+    // a non-empty array for public/private (and an empty array for team).
+    if (this.newConceptVisibility === 'team') {
+      payload.sharedTeamIds = Array.from(this.newConceptTeamIds);
+    }
+
     this.conceptService.createConcept(payload).subscribe({
       next: (concept) => {
         this.closeCreateDialog();
@@ -616,6 +899,33 @@ export class DevLibraryComponent implements OnInit {
       error: () => {
         this.showError('Failed to create concept.');
       },
+    });
+  }
+
+  /**
+   * Unshare the current concept from a single team. The server performs the
+   * soft-unshare + auto-flip-to-private when it was the last team. We then
+   * refetch the concept so the badges + shared list update.
+   */
+  onUnshareTeamFromConcept(teamId: string): void {
+    const concept = this.selectedConcept();
+    if (!concept) return;
+    this.conceptService.unshareFromTeam(concept.id, teamId).subscribe({
+      next: () => {
+        this.conceptService.getConcept(concept.id).subscribe({
+          next: (updated) => {
+            this.selectedConcept.set(updated);
+            this.loadConcepts();
+          },
+          error: () => {
+            // If we lose read access after unshare (e.g. we were a lead-only
+            // viewer), drop the detail selection and refresh the list.
+            this.selectedConcept.set(null);
+            this.loadConcepts();
+          },
+        });
+      },
+      error: () => this.showError('Failed to unshare concept from team.'),
     });
   }
 

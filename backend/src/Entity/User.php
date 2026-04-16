@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -23,17 +25,18 @@ class User implements UserInterface
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     #[ORM\GeneratedValue(strategy: 'CUSTOM')]
     #[ORM\CustomIdGenerator(class: 'doctrine.uuid_generator')]
-    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'user:read'])]
+    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'user:read', 'team:list', 'team:read', 'invite:read'])]
     private ?Uuid $id = null;
 
     #[ORM\Column(type: Types::STRING, length: 255, unique: true)]
     private string $keycloakId;
 
     #[ORM\Column(type: Types::STRING, length: 255, unique: true)]
+    #[Groups(['team:list', 'team:read', 'invite:read'])]
     private string $email;
 
     #[ORM\Column(type: Types::STRING, length: 255)]
-    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'user:read'])]
+    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'user:read', 'team:list', 'team:read', 'invite:read'])]
     private string $username;
 
     #[ORM\Column(type: Types::STRING, length: 50)]
@@ -44,6 +47,23 @@ class User implements UserInterface
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
+
+    /**
+     * Team memberships for this user (internal — not exposed via serializer).
+     *
+     * @var Collection<int, TeamMember>
+     */
+    #[ORM\OneToMany(
+        mappedBy: 'user',
+        targetEntity: TeamMember::class,
+        fetch: 'EXTRA_LAZY',
+    )]
+    private Collection $memberships;
+
+    public function __construct()
+    {
+        $this->memberships = new ArrayCollection();
+    }
 
     public function getId(): ?Uuid
     {
@@ -75,6 +95,17 @@ class User implements UserInterface
     }
 
     public function getUsername(): string
+    {
+        return $this->username;
+    }
+
+    /**
+     * Display name used by the Teams UI. Currently aliases `username` — kept
+     * as a dedicated getter so we can swap to a profile-level field later
+     * without breaking the frontend contract.
+     */
+    #[Groups(['team:list', 'team:read', 'invite:read'])]
+    public function getDisplayName(): string
     {
         return $this->username;
     }
@@ -126,7 +157,21 @@ class User implements UserInterface
      */
     public function getRoles(): array
     {
-        return [$this->role];
+        $roles = [$this->role];
+
+        // ROLE_TEAM_LEAD is app-derived from TeamMember rows, not from Keycloak claims.
+        // Guard against uninitialized collection for freshly-constructed users
+        // (e.g. auto-provisioned from Keycloak before persist).
+        $memberships = $this->memberships ?? new ArrayCollection();
+        $isLead = $memberships->exists(
+            static fn (int|string $_key, TeamMember $m): bool => $m->isLead(),
+        );
+
+        if ($isLead) {
+            $roles[] = 'ROLE_TEAM_LEAD';
+        }
+
+        return array_values(array_unique($roles));
     }
 
     /**
@@ -136,6 +181,30 @@ class User implements UserInterface
     public function eraseCredentials(): void
     {
         // No local credentials to erase
+    }
+
+    // -----------------------------------------------------------------------
+    // Team memberships
+    // -----------------------------------------------------------------------
+
+    /**
+     * @return Collection<int, TeamMember>
+     */
+    public function getMemberships(): Collection
+    {
+        return $this->memberships ??= new ArrayCollection();
+    }
+
+    /**
+     * Whether this user is the lead of at least one team.
+     */
+    public function isLeadOfAny(): bool
+    {
+        $memberships = $this->memberships ?? new ArrayCollection();
+
+        return $memberships->exists(
+            static fn (int|string $_key, TeamMember $m): bool => $m->isLead(),
+        );
     }
 
     // -----------------------------------------------------------------------

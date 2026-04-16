@@ -6,7 +6,7 @@ export type PayloadCategory =
   | 'defense'
   | 'other';
 
-export type PayloadVisibility = 'public' | 'private';
+export type PayloadVisibility = 'public' | 'private' | 'team';
 
 export interface PayloadOwner {
   id: string;
@@ -19,6 +19,12 @@ export interface PayloadTag {
   isOfficial?: boolean;
 }
 
+/** Shape of the elements in `payload.sharedTeams[]` returned by the API. */
+export interface PayloadSharedTeamRef {
+  id: string;
+  name: string;
+}
+
 export interface PayloadListItem {
   id: string;
   title: string;
@@ -28,6 +34,7 @@ export interface PayloadListItem {
   visibility: PayloadVisibility;
   owner: PayloadOwner;
   tags: PayloadTag[];
+  sharedTeams?: PayloadSharedTeamRef[];
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +53,8 @@ export interface PayloadCreateInput {
   body: string;
   /** Tag names (server resolves or creates them). */
   tags: string[];
+  /** Required (non-empty) when visibility='team'; omit otherwise. */
+  sharedTeamIds?: string[];
 }
 
 export type PayloadUpdateInput = Partial<PayloadCreateInput>;

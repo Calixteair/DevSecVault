@@ -35,4 +35,12 @@ export class PayloadService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
+
+  /**
+   * Soft-unshare: remove a single team from this payload's shared list.
+   * Backend auto-flips visibility to 'private' when the last team is removed.
+   */
+  unshareFromTeam(payloadId: string, teamId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${payloadId}/teams/${teamId}`);
+  }
 }

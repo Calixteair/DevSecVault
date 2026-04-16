@@ -27,6 +27,7 @@ import {
   Shield,
   Terminal,
   Trash2,
+  Users,
   Variable,
   Wrench,
   X,
@@ -35,13 +36,16 @@ import { MonacoEditorComponent } from '../../shared/components/monaco-editor/mon
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { AuthService } from '../../core/services/auth.service';
 import { PayloadService } from '../../core/services/payload.service';
+import { TeamService } from '../../core/services/team.service';
 import {
   Payload,
   PayloadCategory,
   PayloadCreateInput,
   PayloadListItem,
+  PayloadUpdateInput,
   PayloadVisibility,
 } from '../../core/models/payload.model';
+import { TeamSummary } from '../../core/models/team.model';
 
 const icons = {
   AlertTriangle,
@@ -59,6 +63,7 @@ const icons = {
   Shield,
   Terminal,
   Trash2,
+  Users,
   Variable,
   Wrench,
   X,
@@ -170,7 +175,8 @@ const CATEGORIES: CategoryMeta[] = [
                       <span
                         class="item-vis font-mono"
                         [class.is-private]="item.visibility === 'private'"
-                      >{{ item.visibility === 'private' ? 'PRIV' : 'PUB' }}</span>
+                        [class.is-team]="item.visibility === 'team'"
+                      >{{ item.visibility === 'private' ? 'PRIV' : (item.visibility === 'team' ? 'TEAM' : 'PUB') }}</span>
                     </button>
                   }
                 </div>
@@ -199,6 +205,7 @@ const CATEGORIES: CategoryMeta[] = [
                   <span
                     class="pill pill-visibility font-mono"
                     [class.is-private]="p.visibility === 'private'"
+                    [class.is-team]="p.visibility === 'team'"
                   >{{ p.visibility.toUpperCase() }}</span>
                   <span class="pill pill-owner font-mono">
                     @{{ p.owner.username }}
@@ -211,7 +218,7 @@ const CATEGORIES: CategoryMeta[] = [
               <div class="header-actions">
                 @if (canModifySelected()) {
                   @if (isEditing()) {
-                    <button class="btn btn-primary" (click)="onSaveEdits()">
+                    <button class="btn btn-primary" [disabled]="!canSaveEdits()" (click)="onSaveEdits()">
                       <lucide-icon name="save" [size]="14" [strokeWidth]="2"></lucide-icon>
                       Save
                     </button>
@@ -239,6 +246,36 @@ const CATEGORIES: CategoryMeta[] = [
               </div>
             </div>
           </div>
+
+          <!-- Shared Teams (visibility='team') -->
+          @if (p.visibility === 'team' && sharedTeamsView().length > 0) {
+            <div class="shared-teams-card">
+              <div class="shared-teams-header">
+                <lucide-icon name="users" [size]="14" [strokeWidth]="2" class="shared-teams-icon"></lucide-icon>
+                <h3 class="shared-teams-title font-mono">SHARED WITH</h3>
+                <span class="shared-teams-hint">
+                  Team leads can unshare their team. Unsharing the last team flips this payload back to private.
+                </span>
+              </div>
+              <div class="shared-teams-list">
+                @for (team of sharedTeamsView(); track team.id) {
+                  <span class="shared-team-chip">
+                    <lucide-icon name="users" [size]="11" [strokeWidth]="2"></lucide-icon>
+                    {{ team.name }}
+                    @if (team.canUnshare) {
+                      <button
+                        class="shared-team-chip-unshare"
+                        (click)="confirmUnshareTeam(team)"
+                        [title]="'Unshare from ' + team.name"
+                      >
+                        <lucide-icon name="x" [size]="10" [strokeWidth]="2.5"></lucide-icon>
+                      </button>
+                    }
+                  </span>
+                }
+              </div>
+            </div>
+          }
 
           <!-- Monaco card -->
           <div class="editor-card">
@@ -323,6 +360,7 @@ const CATEGORIES: CategoryMeta[] = [
                   <select class="form-select" [(ngModel)]="editVisibility">
                     <option value="private">Private</option>
                     <option value="public">Public</option>
+                    <option value="team" [disabled]="teams().length === 0">Team</option>
                   </select>
                 </div>
                 <div class="form-group form-group-span">
@@ -333,6 +371,39 @@ const CATEGORIES: CategoryMeta[] = [
                   <label class="form-label font-mono">TAGS (comma-separated)</label>
                   <input class="form-input font-mono" type="text" placeholder="e.g. linux, reverse-shell, post-exploit" [(ngModel)]="editTagsRaw" />
                 </div>
+                @if (editVisibility === 'team') {
+                  <div class="form-group form-group-span">
+                    <label class="form-label font-mono">
+                      <lucide-icon name="users" [size]="12" [strokeWidth]="2"></lucide-icon>
+                      SHARE WITH TEAMS
+                    </label>
+                    @if (teams().length === 0) {
+                      <p class="form-hint form-hint-warn">You are not a member of any team yet.</p>
+                    } @else {
+                      <div class="team-picker">
+                        @for (team of teams(); track team.id) {
+                          <label class="team-option">
+                            <input
+                              type="checkbox"
+                              [checked]="editTeamIds.has(team.id)"
+                              (change)="toggleEditTeam(team.id, $event)"
+                            />
+                            <span class="team-option-name">{{ team.name }}</span>
+                            <span class="team-option-meta font-mono">
+                              {{ team.memberCount }} {{ team.memberCount === 1 ? 'member' : 'members' }}
+                              @if (team.role === 'lead') { · LEAD }
+                            </span>
+                          </label>
+                        }
+                      </div>
+                      @if (editTeamIds.size === 0) {
+                        <p class="form-hint form-hint-error">
+                          Select at least one team to share with.
+                        </p>
+                      }
+                    }
+                  </div>
+                }
               </div>
             </div>
           }
@@ -430,9 +501,45 @@ const CATEGORIES: CategoryMeta[] = [
                   <select class="form-select" [(ngModel)]="newVisibility">
                     <option value="private">Private</option>
                     <option value="public">Public</option>
+                    <option value="team" [disabled]="teams().length === 0">Team</option>
                   </select>
                 </div>
               </div>
+              @if (newVisibility === 'team') {
+                <div class="form-group">
+                  <label class="form-label font-mono">
+                    <lucide-icon name="users" [size]="12" [strokeWidth]="2"></lucide-icon>
+                    SHARE WITH TEAMS
+                  </label>
+                  @if (teams().length === 0) {
+                    <p class="form-hint form-hint-warn">
+                      You are not a member of any team yet. Create or join a team first.
+                    </p>
+                  } @else {
+                    <div class="team-picker">
+                      @for (team of teams(); track team.id) {
+                        <label class="team-option">
+                          <input
+                            type="checkbox"
+                            [checked]="newTeamIds.has(team.id)"
+                            (change)="toggleNewTeam(team.id, $event)"
+                          />
+                          <span class="team-option-name">{{ team.name }}</span>
+                          <span class="team-option-meta font-mono">
+                            {{ team.memberCount }} {{ team.memberCount === 1 ? 'member' : 'members' }}
+                            @if (team.role === 'lead') { · LEAD }
+                          </span>
+                        </label>
+                      }
+                    </div>
+                    @if (newTeamIds.size === 0) {
+                      <p class="form-hint form-hint-error">
+                        Select at least one team to share with.
+                      </p>
+                    }
+                  }
+                </div>
+              }
               <div class="form-group">
                 <label class="form-label font-mono">LANGUAGE</label>
                 <input class="form-input font-mono" type="text" placeholder="e.g. bash, python, powershell" [(ngModel)]="newLanguage" />
@@ -450,7 +557,7 @@ const CATEGORIES: CategoryMeta[] = [
               <button class="btn btn-ghost" (click)="closeCreateDialog()">Cancel</button>
               <button
                 class="btn btn-primary"
-                [disabled]="!newTitle.trim() || !newBody.trim()"
+                [disabled]="!canSubmitNewPayload()"
                 (click)="createPayload()"
               >
                 <lucide-icon name="plus" [size]="14" [strokeWidth]="2"></lucide-icon>
@@ -552,6 +659,7 @@ const CATEGORIES: CategoryMeta[] = [
       background: var(--secondary); color: var(--muted-foreground); letter-spacing: .05em;
     }
     .item-vis.is-private { background: color-mix(in srgb, var(--destructive) 15%, transparent); color: var(--destructive); }
+    .item-vis.is-team { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
     .main-content {
       flex: 1; overflow-y: auto; padding: 1.5rem;
       display: flex; flex-direction: column; gap: 1rem; min-width: 0;
@@ -577,6 +685,7 @@ const CATEGORIES: CategoryMeta[] = [
     .pill-category { background: color-mix(in srgb, var(--destructive) 12%, transparent); color: var(--destructive); }
     .pill-language { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
     .pill-visibility.is-private { background: color-mix(in srgb, var(--destructive) 15%, transparent); color: var(--destructive); }
+    .pill-visibility.is-team { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
     .pill-owner { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); text-transform: none; }
     .pill-tag { background: var(--secondary); color: var(--muted-foreground); text-transform: none; }
     .header-actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; flex-wrap: wrap; }
@@ -679,6 +788,71 @@ const CATEGORIES: CategoryMeta[] = [
     .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--destructive); }
     .form-select { cursor: pointer; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .form-hint { font-size: .75rem; color: var(--muted-foreground); margin: 0; }
+    .form-hint-error { color: var(--destructive); }
+    .form-hint-warn { color: var(--muted-foreground); font-style: italic; }
+
+    /* Team picker (multi-select via checkboxes) */
+    .team-picker {
+      display: flex; flex-direction: column; gap: .25rem;
+      max-height: 12rem; overflow-y: auto; padding: .375rem;
+      background: var(--input-background); border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .team-option {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .375rem .5rem; border-radius: calc(var(--radius) - 2px);
+      cursor: pointer; color: var(--foreground); font-size: .8125rem;
+      transition: background-color .15s ease;
+    }
+    .team-option:hover { background: var(--secondary); }
+    .team-option input[type='checkbox'] { accent-color: var(--destructive); cursor: pointer; }
+    .team-option-name { flex: 1; font-weight: 500; }
+    .team-option-meta {
+      font-size: .6875rem; color: var(--muted-foreground);
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+
+    /* Shared teams card (destructive accent to match page theme) */
+    .shared-teams-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--destructive); border-radius: var(--radius);
+      padding: .75rem 1rem;
+    }
+    .shared-teams-header {
+      display: flex; align-items: center; gap: .5rem;
+      margin-bottom: .5rem; flex-wrap: wrap;
+    }
+    .shared-teams-icon { color: var(--destructive); }
+    .shared-teams-title {
+      font-size: .6875rem; font-weight: 600; color: var(--destructive);
+      letter-spacing: .08em; margin: 0;
+    }
+    .shared-teams-hint {
+      font-size: .75rem; color: var(--muted-foreground);
+      margin-left: auto; line-height: 1.4;
+    }
+    .shared-teams-list { display: flex; flex-wrap: wrap; gap: .375rem; }
+    .shared-team-chip {
+      display: inline-flex; align-items: center; gap: .375rem;
+      padding: .25rem .5rem .25rem .625rem;
+      background: color-mix(in srgb, var(--destructive) 10%, transparent);
+      color: var(--destructive); border-radius: var(--radius);
+      font-size: .75rem; font-weight: 500;
+    }
+    .shared-team-chip-unshare {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1rem; height: 1rem; border-radius: 50%;
+      border: none; background: transparent; color: currentColor;
+      cursor: pointer; opacity: .7; padding: 0;
+      transition: background-color .15s ease, color .15s ease, opacity .15s ease;
+    }
+    .shared-team-chip-unshare:hover {
+      background: var(--destructive); color: var(--destructive-foreground); opacity: 1;
+    }
+    @media (max-width: 560px) {
+      .shared-teams-hint { margin-left: 0; width: 100%; }
+    }
     .empty-state, .loading-state {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 1rem; padding: 3rem 1rem; flex: 1; text-align: center;
@@ -757,6 +931,7 @@ const CATEGORIES: CategoryMeta[] = [
 export class CyberToolboxComponent implements OnInit {
   readonly payloadService = inject(PayloadService);
   readonly auth = inject(AuthService);
+  readonly teamService = inject(TeamService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly platformId = inject(PLATFORM_ID);
 
@@ -766,6 +941,8 @@ export class CyberToolboxComponent implements OnInit {
   readonly selected = signal<Payload | null>(null);
   readonly loading = signal(false);
   readonly errorMessage = signal('');
+  /** Teams the current user belongs to — drives the sharing multi-select. */
+  readonly teams = signal<TeamSummary[]>([]);
 
   readonly filterText = signal('');
   readonly privateOnly = signal(false);
@@ -791,6 +968,8 @@ export class CyberToolboxComponent implements OnInit {
   editCategory: PayloadCategory = 'other';
   editVisibility: PayloadVisibility = 'private';
   editTagsRaw = '';
+  /** Selected team ids for the edit form when editVisibility='team'. */
+  editTeamIds = new Set<string>();
   private editedBody = '';
 
   // Create dialog buffers
@@ -801,6 +980,8 @@ export class CyberToolboxComponent implements OnInit {
   newVisibility: PayloadVisibility = 'private';
   newTagsRaw = '';
   newBody = '';
+  /** Selected team ids for the create form when newVisibility='team'. */
+  newTeamIds = new Set<string>();
 
   // Reactive user state
   private readonly currentUserId = signal<string | null>(null);
@@ -815,6 +996,34 @@ export class CyberToolboxComponent implements OnInit {
     if (uid && p.owner.id === uid) return true;
     if (uname && p.owner.username === uname) return true;
     return this.isAdmin() && p.visibility === 'public';
+  });
+
+  /** Team ids where the current user is the lead. */
+  readonly myLeadTeamIds = computed(() => {
+    const ids = new Set<string>();
+    for (const t of this.teams()) {
+      if (t.role === 'lead') ids.add(t.id);
+    }
+    return ids;
+  });
+
+  /**
+   * Projection of sharedTeams for the UI: carries a per-user `canUnshare`.
+   * The payload owner can unshare any team; a team's lead can unshare
+   * their own team.
+   */
+  readonly sharedTeamsView = computed(() => {
+    const p = this.selected();
+    if (!p || p.visibility !== 'team') return [];
+    const teams = p.sharedTeams ?? [];
+    if (teams.length === 0) return [];
+    const isOwner = this.canModifySelected();
+    const leadIds = this.myLeadTeamIds();
+    return teams.map(t => ({
+      id: t.id,
+      name: t.name,
+      canUnshare: isOwner || leadIds.has(t.id),
+    }));
   });
 
   /**
@@ -872,6 +1081,21 @@ export class CyberToolboxComponent implements OnInit {
       this.currentUserId.set(null);
     });
     this.auth.isAdmin$.subscribe(isAdmin => this.isAdmin.set(isAdmin));
+    // Refresh the teams list on auth transitions so the sharing multi-select
+    // and shared-teams chips reflect the current user.
+    this.auth.isAuthenticated$.subscribe(isAuth => {
+      if (isAuth) this.loadTeams();
+      else this.teams.set([]);
+    });
+  }
+
+  private loadTeams(): void {
+    this.teamService.list().subscribe({
+      next: teams => this.teams.set(teams),
+      error: () => {
+        /* silent — sharing UI simply stays empty until teams load */
+      },
+    });
   }
 
   ngOnInit(): void {
@@ -951,7 +1175,28 @@ export class CyberToolboxComponent implements OnInit {
     this.editVisibility = p.visibility;
     this.editTagsRaw = p.tags.map(t => t.name).join(', ');
     this.editedBody = p.body;
+    // Pre-populate the team picker with the payload's current shared teams
+    // so the user starts from the existing state, not an empty selection.
+    this.editTeamIds = new Set((p.sharedTeams ?? []).map(t => t.id));
+    // Make sure the teams list is up-to-date when entering edit mode.
+    this.loadTeams();
     this.isEditing.set(true);
+  }
+
+  /** Toggle a team in the edit form multi-select. */
+  toggleEditTeam(teamId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const next = new Set(this.editTeamIds);
+    if (checked) next.add(teamId);
+    else next.delete(teamId);
+    this.editTeamIds = next;
+  }
+
+  /** Guard for the Save button — mirrors the backend visibility/team rule. */
+  canSaveEdits(): boolean {
+    if (!this.editTitle.trim()) return false;
+    if (this.editVisibility === 'team' && this.editTeamIds.size === 0) return false;
+    return true;
   }
 
   cancelEdit(): void {
@@ -965,8 +1210,9 @@ export class CyberToolboxComponent implements OnInit {
   onSaveEdits(): void {
     const p = this.selected();
     if (!p) return;
+    if (!this.canSaveEdits()) return;
     const tags = this.parseTags(this.editTagsRaw);
-    this.payloadService.update(p.id, {
+    const update: PayloadUpdateInput = {
       title: this.editTitle.trim() || p.title,
       description: this.editDescription.trim() || null,
       category: this.editCategory,
@@ -974,7 +1220,13 @@ export class CyberToolboxComponent implements OnInit {
       visibility: this.editVisibility,
       body: this.editedBody,
       tags,
-    }).subscribe({
+    };
+    // Only send sharedTeamIds when visibility='team' — otherwise omit so the
+    // server doesn't reject the payload (non-team visibility with ids=422).
+    if (this.editVisibility === 'team') {
+      update.sharedTeamIds = Array.from(this.editTeamIds);
+    }
+    this.payloadService.update(p.id, update).subscribe({
       next: (updated) => {
         this.selected.set(updated);
         this.isEditing.set(false);
@@ -1039,6 +1291,8 @@ export class CyberToolboxComponent implements OnInit {
     this.newVisibility = 'private';
     this.newTagsRaw = '';
     this.newBody = '';
+    this.newTeamIds = new Set<string>();
+    this.loadTeams();
     this.showCreateDialog.set(true);
   }
 
@@ -1046,8 +1300,24 @@ export class CyberToolboxComponent implements OnInit {
     this.showCreateDialog.set(false);
   }
 
+  /** Toggle a team in the create dialog multi-select. */
+  toggleNewTeam(teamId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const next = new Set(this.newTeamIds);
+    if (checked) next.add(teamId);
+    else next.delete(teamId);
+    this.newTeamIds = next;
+  }
+
+  /** Guard for the Create button — mirrors backend visibility/team rule. */
+  canSubmitNewPayload(): boolean {
+    if (!this.newTitle.trim() || !this.newBody.trim()) return false;
+    if (this.newVisibility === 'team' && this.newTeamIds.size === 0) return false;
+    return true;
+  }
+
   createPayload(): void {
-    if (!this.newTitle.trim() || !this.newBody.trim()) return;
+    if (!this.canSubmitNewPayload()) return;
     const input: PayloadCreateInput = {
       title: this.newTitle.trim(),
       description: this.newDescription.trim() || null,
@@ -1057,6 +1327,9 @@ export class CyberToolboxComponent implements OnInit {
       body: this.newBody,
       tags: this.parseTags(this.newTagsRaw),
     };
+    if (this.newVisibility === 'team') {
+      input.sharedTeamIds = Array.from(this.newTeamIds);
+    }
     this.payloadService.create(input).subscribe({
       next: (created) => {
         this.closeCreateDialog();
@@ -1064,6 +1337,44 @@ export class CyberToolboxComponent implements OnInit {
         this.selected.set(created);
       },
       error: () => this.showError('Failed to create payload.'),
+    });
+  }
+
+  /**
+   * Soft-unshare this payload from a team. Confirms first, then refetches
+   * the payload to reflect the new sharedTeams list + potential auto-flip
+   * to visibility='private' when it was the last team.
+   */
+  async confirmUnshareTeam(team: { id: string; name: string }): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const p = this.selected();
+    if (!p) return;
+    const ok = await this.confirmDialog.confirm({
+      title: `Unshare from "${team.name}"?`,
+      message:
+        'The team will lose access to this payload. ' +
+        'If this is the last team, the payload flips back to private — ' +
+        'nothing is deleted.',
+      confirmLabel: 'Unshare',
+      cancelLabel: 'Cancel',
+      variant: 'destructive',
+    });
+    if (!ok) return;
+    this.payloadService.unshareFromTeam(p.id, team.id).subscribe({
+      next: () => {
+        this.payloadService.get(p.id).subscribe({
+          next: (updated) => {
+            this.selected.set(updated);
+            this.loadPayloads();
+          },
+          error: () => {
+            // Lost read access after unshare (e.g. we were a lead-only viewer).
+            this.selected.set(null);
+            this.loadPayloads();
+          },
+        });
+      },
+      error: () => this.showError('Failed to unshare payload from team.'),
     });
   }
 

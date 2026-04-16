@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Concept;
+use App\Entity\TeamMember;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -72,14 +73,29 @@ class ConceptRepository extends ServiceEntityRepository
     }
 
     /**
-     * Find all concepts visible to a user: their own (any visibility) + public from others.
+     * Find all concepts visible to a user: their own (any visibility) + public
+     * from others + concepts shared with a team the user is a member of.
      *
      * @return Concept[]
      */
     public function findVisibleToUser(User $user): array
     {
+        // Subquery: concept ids shared with any team the user belongs to.
+        $em = $this->getEntityManager();
+        $sharedIdsDql = $em->createQueryBuilder()
+            ->select('c2share.id')
+            ->from(Concept::class, 'c2share')
+            ->innerJoin('c2share.sharedTeams', 'st')
+            ->innerJoin(TeamMember::class, 'tm', 'WITH', 'tm.team = st')
+            ->where('tm.user = :owner')
+            ->getDQL();
+
         return $this->createQueryBuilder('c')
-            ->andWhere('c.owner = :owner OR c.visibility = :public')
+            ->andWhere(
+                'c.owner = :owner '
+                . 'OR c.visibility = :public '
+                . 'OR c.id IN (' . $sharedIdsDql . ')'
+            )
             ->setParameter('owner', $user->getId(), 'uuid')
             ->setParameter('public', 'public')
             ->orderBy('c.updatedAt', 'DESC')

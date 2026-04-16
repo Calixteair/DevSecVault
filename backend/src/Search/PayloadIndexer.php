@@ -38,7 +38,7 @@ class PayloadIndexer
         $this->meili->ensureIndex(self::INDEX, self::PRIMARY_KEY, [
             // NOTE: NEVER add `body` / `bodyEncrypted` here.
             'searchableAttributes' => ['title', 'description', 'tags', 'category', 'language'],
-            'filterableAttributes' => ['visibility', 'owner_id', 'category', 'language', 'tags'],
+            'filterableAttributes' => ['visibility', 'owner_id', 'category', 'language', 'tags', 'team_ids'],
             'sortableAttributes' => ['updated_at'],
             'rankingRules' => [
                 'words',
@@ -90,6 +90,13 @@ class PayloadIndexer
             $tags[] = $tag->getName();
         }
 
+        // Team scoping: lists every team this payload is shared with so a
+        // tenant-token filter `team_ids = "<tid>"` matches per-team.
+        $teamIds = [];
+        foreach ($payload->getSharedTeams() as $team) {
+            $teamIds[] = (string) $team->getId();
+        }
+
         return [
             'id' => (string) $payload->getId(),
             'title' => $payload->getTitle(),
@@ -99,6 +106,7 @@ class PayloadIndexer
             'tags' => $tags,
             'visibility' => $payload->getVisibility(),
             'owner_id' => (string) $payload->getOwner()->getId(),
+            'team_ids' => $teamIds,
             'updated_at' => $payload->getUpdatedAt()->getTimestamp(),
         ];
     }
