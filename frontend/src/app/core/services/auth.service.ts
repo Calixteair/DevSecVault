@@ -29,6 +29,10 @@ export class AuthService {
     })
   );
 
+  readonly isAdmin$ = this.userData$.pipe(
+    map(u => !!u && (u.roles.includes('admin') || u.roles.includes('ROLE_ADMIN')))
+  );
+
   readonly accessToken$ = this.oidc.getAccessToken();
 
   login(): void {
