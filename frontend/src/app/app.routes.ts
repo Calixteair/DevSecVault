@@ -1,6 +1,12 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
+  // Public Secure Bridge viewer — lives OUTSIDE the main layout so recipients
+  // (including guests) see a minimalist page without sidebar/topbar.
+  {
+    path: 'secret/:id',
+    loadComponent: () => import('./features/secure-bridge/secret-viewer.component').then(m => m.SecretViewerComponent),
+  },
   {
     path: '',
     loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),

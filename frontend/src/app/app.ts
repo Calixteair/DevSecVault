@@ -18,7 +18,18 @@ export class App implements OnInit {
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
-      this.auth.checkAuth().subscribe();
+      this.auth.checkAuth().subscribe(result => {
+        // After a successful Keycloak round-trip, restore the URL the user was
+        // on when they clicked "Log in" (e.g. a /secret/:id#key link). We use
+        // location.replace (not Router.navigateByUrl) because the fragment
+        // must survive — Angular Router drops URL fragments on programmatic
+        // navigation unless explicitly re-attached.
+        if (!result?.isAuthenticated) return;
+        const returnUrl = this.auth.consumeReturnUrl();
+        if (returnUrl && returnUrl !== window.location.pathname + window.location.search + window.location.hash) {
+          window.location.replace(returnUrl);
+        }
+      });
     }
   }
 }

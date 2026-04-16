@@ -24,7 +24,10 @@ security:
     access_control:
         - { path: ^/api/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/public, roles: PUBLIC_ACCESS }
-        - { path: ^/api/secrets, roles: PUBLIC_ACCESS, methods: [GET, POST] }
+        # Secure Bridge — shared links: GET + POST /consume are public at the
+        # firewall level; the SecretLinkVoter enforces requireAuth per-entity.
+        # POST /api/secret-links (creation) falls through to ROLE_USER below.
+        - { path: '^/api/secret-links/[0-9a-fA-F-]{36}(/consume)?$', roles: PUBLIC_ACCESS, methods: [GET, POST] }
         - { path: ^/api/concepts, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/payloads, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/search/token, roles: PUBLIC_ACCESS, methods: [GET] }
