@@ -32,3 +32,8 @@ services:
         arguments:
             $keycloakUrl: '%keycloak_url%'
             $keycloakRealm: '%keycloak_realm%'
+
+    App\Search\MeilisearchClient:
+        arguments:
+            $meiliUrl: '%meili_url%'
+            $masterKey: '%meili_master_key%'

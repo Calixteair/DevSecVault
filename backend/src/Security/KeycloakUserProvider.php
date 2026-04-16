@@ -33,23 +33,79 @@ final readonly class KeycloakUserProvider implements UserProviderInterface
      */
     public function loadUserByIdentifier(string $identifier): UserInterface
     {
+        return $this->loadUserFromClaims($identifier, []);
+    }
+
+    /**
+     * Load or auto-provision a user, syncing role/email/username from Keycloak claims.
+     *
+     * @param array<string, mixed> $claims The full userinfo payload from Keycloak
+     */
+    public function loadUserFromClaims(string $identifier, array $claims): User
+    {
         $user = $this->userRepository->findByKeycloakId($identifier);
 
+        $role = $this->extractRoleFromClaims($claims);
+        $email = is_string($claims['email'] ?? null) ? $claims['email'] : $identifier . '@placeholder.local';
+        $username = is_string($claims['preferred_username'] ?? null)
+            ? $claims['preferred_username']
+            : 'user_' . substr($identifier, 0, 8);
+
         if ($user !== null) {
+            // Sync role/email/username if they changed in Keycloak
+            $changed = false;
+            if ($user->getRoles() !== [$role]) {
+                $user->setRole($role);
+                $changed = true;
+            }
+            if ($user->getUsername() !== $username) {
+                $user->setUsername($username);
+                $changed = true;
+            }
+            // Email: only update if claim differs AND no unique-conflict risk; we keep it simple
+            if ($changed) {
+                $this->entityManager->flush();
+            }
+
             return $user;
         }
 
         // Auto-provision: first login for this Keycloak user
         $user = new User();
         $user->setKeycloakId($identifier);
-        $user->setEmail($identifier . '@placeholder.local');
-        $user->setUsername('user_' . substr($identifier, 0, 8));
-        $user->setRole('ROLE_USER');
+        $user->setEmail($email);
+        $user->setUsername($username);
+        $user->setRole($role);
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
         return $user;
+    }
+
+    /**
+     * Map Keycloak realm roles to a single Symfony role.
+     * Priority: admin > team_lead > user.
+     *
+     * @param array<string, mixed> $claims
+     */
+    private function extractRoleFromClaims(array $claims): string
+    {
+        $realmRoles = $claims['realm_access']['roles'] ?? [];
+
+        if (!is_array($realmRoles)) {
+            return 'ROLE_USER';
+        }
+
+        if (in_array('admin', $realmRoles, true) || in_array('ROLE_ADMIN', $realmRoles, true)) {
+            return 'ROLE_ADMIN';
+        }
+
+        if (in_array('team_lead', $realmRoles, true) || in_array('ROLE_TEAM_LEAD', $realmRoles, true)) {
+            return 'ROLE_TEAM_LEAD';
+        }
+
+        return 'ROLE_USER';
     }
 
     /**

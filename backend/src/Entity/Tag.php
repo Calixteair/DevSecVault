@@ -8,6 +8,7 @@ use App\Repository\TagRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: TagRepository::class)]
@@ -20,12 +21,15 @@ class Tag
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     #[ORM\GeneratedValue(strategy: 'CUSTOM')]
     #[ORM\CustomIdGenerator(class: 'doctrine.uuid_generator')]
+    #[Groups(['concept:list', 'concept:read', 'tag:read'])]
     private ?Uuid $id = null;
 
     #[ORM\Column(type: Types::STRING, length: 100, unique: true)]
+    #[Groups(['concept:list', 'concept:read', 'tag:read'])]
     private string $name;
 
     #[ORM\Column(type: Types::BOOLEAN)]
+    #[Groups(['concept:list', 'concept:read', 'tag:read'])]
     private bool $isOfficial = false;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]

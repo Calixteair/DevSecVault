@@ -20,6 +20,7 @@ final readonly class KeycloakAccessTokenHandler implements AccessTokenHandlerInt
 {
     public function __construct(
         private HttpClientInterface $httpClient,
+        private KeycloakUserProvider $userProvider,
         private string $keycloakUrl,
         private string $keycloakRealm,
     ) {
@@ -68,11 +69,11 @@ final readonly class KeycloakAccessTokenHandler implements AccessTokenHandlerInt
             );
         }
 
-        // Store the full userinfo payload as attributes so the UserProvider
-        // can extract email, preferred_username, realm_access roles, etc.
+        // Custom loader: passes the full userinfo payload (including realm_access.roles)
+        // to the UserProvider so it can sync the local User's role from Keycloak claims.
         return new UserBadge(
             userIdentifier: $sub,
-            userLoader: null,
+            userLoader: fn (string $identifier) => $this->userProvider->loadUserFromClaims($identifier, $userinfo),
             attributes: $userinfo,
         );
     }
