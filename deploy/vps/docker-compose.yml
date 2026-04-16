@@ -1,6 +1,21 @@
 services:
   # ---------------------------------------------------------------------------
-  # PHP-FPM (Symfony 8 API)
+  # Nginx API (reverse proxy FastCGI -> PHP-FPM)
+  # ---------------------------------------------------------------------------
+  api:
+    image: ${DOCKERHUB_USERNAME}/devsecvault-api:latest
+    container_name: dsv-api
+    restart: unless-stopped
+    depends_on:
+      - php
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - dsv-internal
+      - nginx-reverse-proxy
+
+  # ---------------------------------------------------------------------------
+  # PHP-FPM (Symfony 8)
   # ---------------------------------------------------------------------------
   php:
     image: ${DOCKERHUB_USERNAME}/devsecvault-backend:latest
@@ -25,7 +40,6 @@ services:
       - no-new-privileges:true
     networks:
       - dsv-internal
-      - nginx-reverse-proxy
 
   # ---------------------------------------------------------------------------
   # Angular (production build served by nginx)
