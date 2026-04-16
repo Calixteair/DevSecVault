@@ -1,10 +1,11 @@
 export const environment = {
   production: true,
-  apiUrl: '/api',
-  meiliUrl: '/meili',
+  apiUrl: 'https://vaultapi.calixteair.fr/api',
+  meiliUrl: 'https://vaultapi.calixteair.fr/meili',
   keycloak: {
-    url: '/auth',
-    realm: 'devsecvault',
+    authority: 'https://auth.calixteair.fr/realms/devsecvault',
     clientId: 'devsecvault-frontend',
+    redirectUrl: 'https://vault.calixteair.fr',
+    postLogoutRedirectUri: 'https://vault.calixteair.fr',
   },
 };

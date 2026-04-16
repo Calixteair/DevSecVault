@@ -3,11 +3,18 @@
   <p><strong>Plateforme centralisee de savoir technique et d'outils cybersecurite</strong></p>
   <p>Auto-hebergee, chiffree, rapide.</p>
 
+  [![Build & Push](https://github.com/Calixteair/DevSecVault/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/Calixteair/DevSecVault/actions/workflows/build-and-push.yml)
+  [![API Status](https://img.shields.io/website?url=https%3A%2F%2Fvaultapi.calixteair.fr%2Fapi%2Fhealth&label=API&style=flat-square)](https://vaultapi.calixteair.fr/api/health)
+  [![Frontend Status](https://img.shields.io/website?url=https%3A%2F%2Fvault.calixteair.fr&label=Frontend&style=flat-square)](https://vault.calixteair.fr)
+  [![Keycloak Status](https://img.shields.io/website?url=https%3A%2F%2Fauth.calixteair.fr%2Frealms%2Fdevsecvault&label=Keycloak&style=flat-square)](https://auth.calixteair.fr/realms/devsecvault)
+  [![License](https://img.shields.io/badge/license-private-red?style=flat-square)](#)
+
   ![Angular](https://img.shields.io/badge/Angular-21-DD0031?style=for-the-badge&logo=angular&logoColor=white)
   ![Symfony](https://img.shields.io/badge/Symfony-8-000000?style=for-the-badge&logo=symfony&logoColor=white)
   ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-316192?style=for-the-badge&logo=postgresql&logoColor=white)
   ![Meilisearch](https://img.shields.io/badge/Meilisearch-1.13-FF5CAA?style=for-the-badge&logo=meilisearch&logoColor=white)
   ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+  ![Keycloak](https://img.shields.io/badge/Keycloak-OIDC-4D4D4D?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0wIDE4Yy00LjQxIDAtOC0zLjU5LTgtOHMzLjU5LTggOC04IDggMy41OSA4IDgtMy41OSA4LTggOHoiLz48L3N2Zz4=&logoColor=white)
 </div>
 
 ---
@@ -93,10 +100,21 @@ DevSecVault/
 │       │   ├── features/    # Modules (lazy-loaded)
 │       │   └── core/        # Services (theme, auth...)
 │       └── styles.css       # Design system (CSS variables)
+├── keycloak-theme/          # Theme Keycloak custom (login)
 ├── docker/                  # Dockerfiles (dev + prod)
 ├── deploy/vps/              # Config VPS (docker-compose + .env)
 └── .github/workflows/       # CI/CD GitHub Actions
 ```
+
+## Theme Keycloak
+
+Le dossier `keycloak-theme/` contient le theme de login custom pour Keycloak (page split-screen avec la charte graphique DevSecVault). Ce theme est versionne ici comme reference mais n'est **pas deploye automatiquement**.
+
+Pour deployer une modification du theme sur le VPS :
+```bash
+scp -r keycloak-theme/devsecvault/* vps:~/docker/EPI/themes/devsecvault/login/
+```
+Le docker-compose de Keycloak monte ce dossier en volume dans le container.
 
 ## Licence
 

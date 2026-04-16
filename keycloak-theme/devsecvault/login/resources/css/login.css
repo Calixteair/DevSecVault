@@ -1,0 +1,442 @@
+/* ============================================================================
+   DevSecVault - Keycloak Login Theme
+   Matches the Angular app design system (dark mode default)
+   ============================================================================ */
+
+:root {
+    --dsv-background: #101012;
+    --dsv-foreground: #F4F4F5;
+    --dsv-card: #18181B;
+    --dsv-card-foreground: #F4F4F5;
+    --dsv-border: #27272A;
+    --dsv-primary: #22C55E;
+    --dsv-primary-foreground: #FFFFFF;
+    --dsv-accent: #F97316;
+    --dsv-accent-foreground: #FFFFFF;
+    --dsv-destructive: #EF4444;
+    --dsv-destructive-foreground: #FFFFFF;
+    --dsv-muted: #27272A;
+    --dsv-muted-foreground: #A1A1AA;
+    --dsv-input: #27272A;
+    --dsv-input-background: #09090B;
+    --dsv-ring: #22C55E;
+    --dsv-radius: 0.5rem;
+}
+
+/* Reset Keycloak default styles */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.dsv-body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--dsv-background);
+    color: var(--dsv-foreground);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+}
+
+/* ---- Layout: split-screen ---- */
+.dsv-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Left panel - features */
+.dsv-left {
+    display: none;
+    width: 50%;
+    background-color: var(--dsv-card);
+    border-right: 1px solid var(--dsv-border);
+    padding: 3rem;
+    flex-direction: column;
+    justify-content: center;
+}
+
+@media (min-width: 1024px) {
+    .dsv-left { display: flex; }
+}
+
+.dsv-left-content {
+    max-width: 28rem;
+}
+
+.dsv-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+.dsv-shield-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--dsv-primary);
+}
+
+.dsv-title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.dsv-subtitle {
+    color: var(--dsv-muted-foreground);
+    font-size: 1.125rem;
+    margin-bottom: 3rem;
+}
+
+/* Features list */
+.dsv-features {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.dsv-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.dsv-feature-icon {
+    flex-shrink: 0;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--dsv-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dsv-feature-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.dsv-feature-icon--primary {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--dsv-primary);
+}
+
+.dsv-feature-icon--accent {
+    background-color: rgba(249, 115, 22, 0.1);
+    color: var(--dsv-accent);
+}
+
+.dsv-feature-icon--destructive {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--dsv-destructive);
+}
+
+.dsv-feature-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.dsv-feature-desc {
+    font-size: 0.875rem;
+    color: var(--dsv-muted-foreground);
+}
+
+/* Right panel - form */
+.dsv-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.dsv-form-wrapper {
+    width: 100%;
+    max-width: 26rem;
+}
+
+/* Card */
+.dsv-card {
+    background-color: var(--dsv-card);
+    border: 1px solid var(--dsv-border);
+    border-radius: var(--dsv-radius);
+    padding: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dsv-card-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.dsv-lock-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    background-color: rgba(34, 197, 94, 0.1);
+    border-radius: 50%;
+    margin-bottom: 1rem;
+}
+
+.dsv-lock-icon svg {
+    width: 2rem;
+    height: 2rem;
+    color: var(--dsv-primary);
+}
+
+.dsv-card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.dsv-card-subtitle {
+    color: var(--dsv-muted-foreground);
+    font-size: 0.875rem;
+}
+
+/* Alerts */
+.dsv-alert {
+    padding: 0.75rem 1rem;
+    border-radius: var(--dsv-radius);
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+}
+
+.dsv-alert--error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--dsv-destructive);
+}
+
+.dsv-alert--success {
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: var(--dsv-primary);
+}
+
+.dsv-alert--warning {
+    background-color: rgba(249, 115, 22, 0.1);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    color: var(--dsv-accent);
+}
+
+.dsv-alert--info {
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: var(--dsv-primary);
+}
+
+/* Form fields */
+.dsv-field {
+    margin-bottom: 1.5rem;
+}
+
+.dsv-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--dsv-foreground);
+}
+
+.dsv-input-wrapper {
+    position: relative;
+}
+
+.dsv-input-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--dsv-muted-foreground);
+    pointer-events: none;
+}
+
+.dsv-input {
+    width: 100%;
+    height: 2.75rem;
+    padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    background-color: var(--dsv-input-background);
+    border: 1px solid var(--dsv-border);
+    border-radius: var(--dsv-radius);
+    color: var(--dsv-foreground);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dsv-input::placeholder {
+    color: var(--dsv-muted-foreground);
+}
+
+.dsv-input:focus {
+    border-color: var(--dsv-primary);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.dsv-input[aria-invalid="true"] {
+    border-color: var(--dsv-destructive);
+}
+
+.dsv-input[aria-invalid="true"]:focus {
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.dsv-error {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--dsv-destructive);
+    margin-top: 0.375rem;
+}
+
+/* Form options row */
+.dsv-form-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+}
+
+.dsv-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dsv-checkbox input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--dsv-primary);
+    cursor: pointer;
+}
+
+.dsv-checkbox label {
+    color: var(--dsv-muted-foreground);
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+/* Links */
+.dsv-link {
+    color: var(--dsv-primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: opacity 0.15s;
+}
+
+.dsv-link:hover {
+    opacity: 0.8;
+}
+
+/* Submit button */
+.dsv-btn {
+    width: 100%;
+    height: 2.75rem;
+    background-color: var(--dsv-primary);
+    color: var(--dsv-primary-foreground);
+    border: none;
+    border-radius: var(--dsv-radius);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.dsv-btn:hover {
+    opacity: 0.9;
+}
+
+.dsv-btn:active {
+    opacity: 0.8;
+}
+
+.dsv-btn:focus-visible {
+    outline: 2px solid var(--dsv-primary);
+    outline-offset: 2px;
+}
+
+/* Info section (registration link) */
+.dsv-info {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.dsv-register {
+    font-size: 0.875rem;
+    color: var(--dsv-muted-foreground);
+}
+
+/* Social providers */
+.dsv-social {
+    margin-top: 1.5rem;
+}
+
+.dsv-divider {
+    text-align: center;
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.dsv-divider::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background-color: var(--dsv-border);
+}
+
+.dsv-divider span {
+    position: relative;
+    background-color: var(--dsv-card);
+    padding: 0 1rem;
+    font-size: 0.75rem;
+    color: var(--dsv-muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dsv-social-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.dsv-social-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 2.75rem;
+    background-color: var(--dsv-input-background);
+    border: 1px solid var(--dsv-border);
+    border-radius: var(--dsv-radius);
+    color: var(--dsv-foreground);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+}
+
+.dsv-social-btn:hover {
+    border-color: var(--dsv-muted-foreground);
+}
+
+/* ---- Override Keycloak default classes ---- */
+.kc-form-card, .login-pf-page, #kc-header, #kc-content, #kc-form {
+    all: unset;
+    display: block;
+}
+
+.pf-c-alert__icon { display: none; }
+
+#kc-locale { display: none; }

@@ -3,8 +3,9 @@ export const environment = {
   apiUrl: 'http://localhost:8000/api',
   meiliUrl: 'http://localhost:7700',
   keycloak: {
-    url: 'http://localhost:8080/auth',
-    realm: 'devsecvault',
+    authority: 'https://auth.calixteair.fr/realms/devsecvault',
     clientId: 'devsecvault-frontend',
+    redirectUrl: 'http://localhost:4200',
+    postLogoutRedirectUri: 'http://localhost:4200',
   },
 };
