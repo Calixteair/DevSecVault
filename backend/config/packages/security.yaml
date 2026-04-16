@@ -26,6 +26,7 @@ security:
         - { path: ^/api/public, roles: PUBLIC_ACCESS }
         - { path: ^/api/secrets, roles: PUBLIC_ACCESS, methods: [GET, POST] }
         - { path: ^/api/concepts, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/payloads, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/search/token, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api, roles: ROLE_USER }
 
