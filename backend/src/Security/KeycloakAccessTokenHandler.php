@@ -69,6 +69,15 @@ final readonly class KeycloakAccessTokenHandler implements AccessTokenHandlerInt
             );
         }
 
+        // Keycloak's /userinfo endpoint does not include `realm_access.roles` by default
+        // (only the access token does). We decode the JWT claims (without verifying the
+        // signature — the userinfo call above already validated the token against Keycloak)
+        // and merge `realm_access` into the payload so role sync works.
+        $tokenClaims = $this->decodeJwtClaims($accessToken);
+        if (isset($tokenClaims['realm_access']) && !isset($userinfo['realm_access'])) {
+            $userinfo['realm_access'] = $tokenClaims['realm_access'];
+        }
+
         // Custom loader: passes the full userinfo payload (including realm_access.roles)
         // to the UserProvider so it can sync the local User's role from Keycloak claims.
         return new UserBadge(
@@ -76,5 +85,28 @@ final readonly class KeycloakAccessTokenHandler implements AccessTokenHandlerInt
             userLoader: fn (string $identifier) => $this->userProvider->loadUserFromClaims($identifier, $userinfo),
             attributes: $userinfo,
         );
+    }
+
+    /**
+     * Decode a JWT's payload without signature verification. The token has already
+     * been validated by the userinfo endpoint above, so we only need its claims.
+     *
+     * @return array<string, mixed>
+     */
+    private function decodeJwtClaims(string $jwt): array
+    {
+        $parts = explode('.', $jwt);
+        if (count($parts) !== 3) {
+            return [];
+        }
+        $payload = strtr($parts[1], '-_', '+/');
+        $payload .= str_repeat('=', (4 - strlen($payload) % 4) % 4);
+        $decoded = base64_decode($payload, true);
+        if ($decoded === false) {
+            return [];
+        }
+        $claims = json_decode($decoded, true);
+
+        return is_array($claims) ? $claims : [];
     }
 }
