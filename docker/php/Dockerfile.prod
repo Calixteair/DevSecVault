@@ -15,6 +15,11 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY docker/php/conf.d/app.prod.ini /usr/local/etc/php/conf.d/app.ini
 
+# Entrypoint: runs migrations + meili reindex before starting php-fpm
+# Fixtures are skipped automatically (only loaded when APP_ENV=dev)
+COPY docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 WORKDIR /var/www/backend
 
 COPY backend/composer.json backend/composer.lock ./
@@ -25,4 +30,5 @@ RUN composer dump-autoload --optimize --no-dev \
     && php bin/console cache:clear --env=prod --no-debug \
     && chmod -R 777 var/
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]

@@ -30,6 +30,22 @@ services:
       - proxy-network
 
   # ---------------------------------------------------------------------------
+  # Nginx API (reverse proxy FastCGI -> PHP-FPM)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    container_name: dsv-api
+    restart: unless-stopped
+    depends_on:
+      - php
+    ports:
+      - "${API_PORT:-8000}:80"
+    networks:
+      - dsv-internal
+
+  # ---------------------------------------------------------------------------
   # Angular (frontend dev server)
   # ---------------------------------------------------------------------------
   angular:

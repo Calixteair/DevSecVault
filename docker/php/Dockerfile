@@ -22,7 +22,11 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # PHP configuration
 COPY docker/php/conf.d/app.ini /usr/local/etc/php/conf.d/app.ini
 
+# Entrypoint: runs migrations + fixtures before starting php-fpm
+COPY docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 WORKDIR /var/www/backend
 
-# Default command
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]
