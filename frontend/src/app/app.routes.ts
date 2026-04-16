@@ -27,6 +27,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/it-tools/it-tools.component').then(m => m.ItToolsComponent),
       },
       {
+        path: 'it-tools/:slug',
+        loadComponent: () => import('./features/it-tools/tool-host.component').then(m => m.ToolHostComponent),
+      },
+      {
         path: 'settings',
         loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent),
       },
