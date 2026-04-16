@@ -1,0 +1,36 @@
+# =============================================================================
+# DevSecVault .gitignore
+# =============================================================================
+
+# ---- IDE / Editor ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Docker ----
+docker-compose.override.yml
+
+# ---- Environment (secrets) ----
+.env.local
+deploy/vps/.env
+
+# ---- Backend (Symfony / PHP) ----
+backend/vendor/
+backend/var/
+backend/.env.local
+backend/.env.*.local
+
+# ---- Frontend (Angular / Node) ----
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# ---- Data volumes (if accidentally placed in repo) ----
+postgres_data/
+meili_data/

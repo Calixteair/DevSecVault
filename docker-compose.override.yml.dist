@@ -1,0 +1,41 @@
+# =============================================================================
+# DevSecVault - Local Dev Override Template
+# =============================================================================
+# Copy this file to docker-compose.override.yml to apply local overrides.
+# docker-compose.override.yml is gitignored and will NOT be committed.
+#
+#   cp docker-compose.override.yml.dist docker-compose.override.yml
+#
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # ---------------------------------------------------------------------------
+  # Example: Enable Xdebug in the PHP container
+  # ---------------------------------------------------------------------------
+  php:
+    environment:
+      # Xdebug mode: debug, profile, coverage, trace (comma-separated)
+      XDEBUG_MODE: "debug"
+      # Point to your host machine's IP for IDE connection
+      XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003"
+      # Automatically start Xdebug on every request (set to "trigger" for on-demand)
+      XDEBUG_TRIGGER: "yes"
+    # Mount a custom Xdebug ini if needed
+    # volumes:
+    #   - ./docker/php/conf.d/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini:ro
+
+  # ---------------------------------------------------------------------------
+  # Example: Expose PostgreSQL on a non-default host port
+  # ---------------------------------------------------------------------------
+  # postgres:
+  #   ports:
+  #     - "15432:5432"
+
+  # ---------------------------------------------------------------------------
+  # Example: Expose Meilisearch UI on a different host port
+  # ---------------------------------------------------------------------------
+  # meilisearch:
+  #   ports:
+  #     - "17700:7700"

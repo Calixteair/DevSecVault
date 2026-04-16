@@ -1,0 +1,28 @@
+FROM php:8.3-fpm-alpine
+
+RUN apk add --no-cache \
+    icu-dev \
+    libpq-dev \
+    linux-headers \
+    $PHPIZE_DEPS \
+  && docker-php-ext-install \
+    pdo_pgsql \
+    intl \
+    opcache \
+  && apk del $PHPIZE_DEPS linux-headers
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+COPY docker/php/conf.d/app.prod.ini /usr/local/etc/php/conf.d/app.ini
+
+WORKDIR /var/www/backend
+
+COPY backend/composer.json backend/composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
+
+COPY backend/ .
+RUN composer dump-autoload --optimize --no-dev \
+    && php bin/console cache:clear --env=prod --no-debug \
+    && chmod -R 777 var/
+
+CMD ["php-fpm"]

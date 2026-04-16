@@ -1,0 +1,103 @@
+services:
+  # ---------------------------------------------------------------------------
+  # PHP-FPM (Symfony backend)
+  # ---------------------------------------------------------------------------
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: dsv-php
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dsv-postgres:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8"
+      APP_ENV: "${APP_ENV}"
+      APP_SECRET: "${APP_SECRET}"
+      KEYCLOAK_URL: "${KEYCLOAK_URL}"
+      KEYCLOAK_REALM: "${KEYCLOAK_REALM}"
+      KEYCLOAK_CLIENT_ID: "${KEYCLOAK_CLIENT_ID}"
+      MEILI_URL: "http://dsv-meilisearch:7700"
+      MEILI_MASTER_KEY: "${MEILI_MASTER_KEY}"
+      CORS_ALLOW_ORIGIN: "^https?://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?$$"
+    expose:
+      - "9000"
+    networks:
+      - dsv-internal
+      - proxy-network
+
+  # ---------------------------------------------------------------------------
+  # Angular (frontend dev server)
+  # ---------------------------------------------------------------------------
+  angular:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+    container_name: dsv-angular
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "${ANGULAR_PORT:-4200}:4200"
+    command: npx ng serve --host 0.0.0.0 --poll 2000
+    networks:
+      - dsv-internal
+      - proxy-network
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: dsv-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dsv-internal
+
+  # ---------------------------------------------------------------------------
+  # Meilisearch
+  # ---------------------------------------------------------------------------
+  meilisearch:
+    image: getmeili/meilisearch:v1.13
+    container_name: dsv-meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: "${MEILI_MASTER_KEY}"
+      MEILI_ENV: "development"
+    volumes:
+      - meili_data:/meili_data
+    ports:
+      - "${MEILI_PORT:-7700}:7700"
+    networks:
+      - dsv-internal
+
+volumes:
+  postgres_data:
+    driver: local
+  meili_data:
+    driver: local
+
+networks:
+  dsv-internal:
+    driver: bridge
+  proxy-network:
+    external: true
+    name: "${PROXY_NETWORK}"
