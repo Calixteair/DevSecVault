@@ -1,25 +1,945 @@
-import { Component } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  PLATFORM_ID,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { AsyncPipe, isPlatformBrowser } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import {
+  LucideAngularModule,
+  LUCIDE_ICONS,
+  LucideIconProvider,
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Edit3,
+  FileCode,
+  Folder,
+  Lock,
+  Plus,
+  Save,
+  Search,
+  Shield,
+  Terminal,
+  Trash2,
+  Wrench,
+  X,
+} from 'lucide-angular';
+import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
+import { AuthService } from '../../core/services/auth.service';
+import { PayloadService } from '../../core/services/payload.service';
+import {
+  Payload,
+  PayloadCategory,
+  PayloadCreateInput,
+  PayloadListItem,
+  PayloadVisibility,
+} from '../../core/models/payload.model';
+
+const icons = {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Edit3,
+  FileCode,
+  Folder,
+  Lock,
+  Plus,
+  Save,
+  Search,
+  Shield,
+  Terminal,
+  Trash2,
+  Wrench,
+  X,
+};
+
+interface CategoryMeta {
+  key: PayloadCategory;
+  label: string;
+}
+
+const CATEGORIES: CategoryMeta[] = [
+  { key: 'recon', label: 'Reconnaissance' },
+  { key: 'exploitation', label: 'Exploitation' },
+  { key: 'privesc', label: 'Privilege Escalation' },
+  { key: 'post-exploitation', label: 'Post-Exploitation' },
+  { key: 'defense', label: 'Defense' },
+  { key: 'other', label: 'Other' },
+];
 
 @Component({
   selector: 'app-cyber-toolbox',
+  imports: [AsyncPipe, FormsModule, LucideAngularModule, MonacoEditorComponent],
+  providers: [
+    { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
+  ],
   template: `
-    <div class="page">
-      <h1 class="page-title">Cyber Toolbox</h1>
-      <p class="page-subtitle">Security tools and command generators</p>
+    <div class="cyber-toolbox">
+      <!-- Sidebar -->
+      <aside class="ctb-sidebar">
+        <div class="sidebar-header">
+          <h2 class="sidebar-title">
+            <lucide-icon name="wrench" [size]="18" [strokeWidth]="2"></lucide-icon>
+            Cyber Toolbox
+          </h2>
+          @if (auth.isAuthenticated$ | async) {
+            <button class="btn-new" (click)="openCreateDialog()" title="New payload">
+              <lucide-icon name="plus" [size]="16" [strokeWidth]="2"></lucide-icon>
+            </button>
+          }
+        </div>
+
+        <div class="sidebar-search">
+          <lucide-icon name="search" [size]="14" [strokeWidth]="2" class="search-icon"></lucide-icon>
+          <input
+            type="text"
+            class="search-input font-mono"
+            placeholder="Filter (title, lang, tag)..."
+            [ngModel]="filterText()"
+            (ngModelChange)="filterText.set($event)"
+          />
+        </div>
+
+        @if (auth.isAuthenticated$ | async) {
+          <div class="sidebar-visibility-toggle">
+            <button
+              class="vis-btn"
+              [class.active]="!privateOnly()"
+              (click)="privateOnly.set(false)"
+              title="All payloads"
+            >All</button>
+            <button
+              class="vis-btn"
+              [class.active]="privateOnly()"
+              (click)="privateOnly.set(true)"
+              title="Only my private payloads"
+            >
+              <lucide-icon name="lock" [size]="12" [strokeWidth]="2"></lucide-icon>
+              Private
+            </button>
+          </div>
+        }
+
+        <div class="sidebar-tree">
+          @if (filteredGroups().length === 0) {
+            <div class="empty-tree">
+              <lucide-icon name="folder" [size]="28" [strokeWidth]="1.5" class="empty-icon"></lucide-icon>
+              <p class="empty-text">No payloads match</p>
+            </div>
+          }
+
+          @for (group of filteredGroups(); track group.key) {
+            <div class="tree-group">
+              <button class="tree-folder" (click)="toggleCategory(group.key)">
+                @if (expandedCategories().has(group.key)) {
+                  <lucide-icon name="chevron-down" [size]="14" [strokeWidth]="2"></lucide-icon>
+                } @else {
+                  <lucide-icon name="chevron-right" [size]="14" [strokeWidth]="2"></lucide-icon>
+                }
+                <lucide-icon name="folder" [size]="14" [strokeWidth]="2" class="folder-icon"></lucide-icon>
+                <span class="folder-name">{{ group.label }}</span>
+                <span class="folder-count">{{ group.items.length }}</span>
+              </button>
+
+              @if (expandedCategories().has(group.key)) {
+                <div class="tree-items">
+                  @for (item of group.items; track item.id) {
+                    <button
+                      class="tree-item"
+                      [class.active]="selected()?.id === item.id"
+                      (click)="onSelectPayload(item)"
+                    >
+                      <lucide-icon name="file-code" [size]="14" [strokeWidth]="2" class="item-icon"></lucide-icon>
+                      <span class="item-name">{{ item.title }}</span>
+                      <span
+                        class="item-vis font-mono"
+                        [class.is-private]="item.visibility === 'private'"
+                      >{{ item.visibility === 'private' ? 'PRIV' : 'PUB' }}</span>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <div class="main-content">
+        @if (selected(); as p) {
+          <!-- Header card with red rail -->
+          <div class="header-card">
+            <div class="header-top">
+              <div class="header-left">
+                <h1 class="payload-title">{{ p.title }}</h1>
+                @if (p.description) {
+                  <p class="payload-description">{{ p.description }}</p>
+                }
+                <div class="header-meta">
+                  <span class="pill pill-category font-mono">{{ categoryLabel(p.category) }}</span>
+                  @if (p.language) {
+                    <span class="pill pill-language font-mono">{{ p.language }}</span>
+                  }
+                  <span
+                    class="pill pill-visibility font-mono"
+                    [class.is-private]="p.visibility === 'private'"
+                  >{{ p.visibility.toUpperCase() }}</span>
+                  <span class="pill pill-owner font-mono">
+                    @{{ p.owner.username }}
+                  </span>
+                  @for (tag of p.tags; track tag.id) {
+                    <span class="pill pill-tag font-mono">#{{ tag.name }}</span>
+                  }
+                </div>
+              </div>
+              <div class="header-actions">
+                @if (canModifySelected()) {
+                  @if (isEditing()) {
+                    <button class="btn btn-primary" (click)="onSaveEdits()">
+                      <lucide-icon name="save" [size]="14" [strokeWidth]="2"></lucide-icon>
+                      Save
+                    </button>
+                    <button class="btn btn-ghost" (click)="cancelEdit()">Cancel</button>
+                  } @else {
+                    <button class="btn btn-outline" (click)="startEdit()">
+                      <lucide-icon name="edit-3" [size]="14" [strokeWidth]="2"></lucide-icon>
+                      Edit
+                    </button>
+                    <button class="btn btn-danger" (click)="confirmDelete()">
+                      <lucide-icon name="trash-2" [size]="14" [strokeWidth]="2"></lucide-icon>
+                      Delete
+                    </button>
+                  }
+                }
+                <button class="btn btn-primary" (click)="copyBody()" [disabled]="copySuccess()">
+                  @if (copySuccess()) {
+                    <lucide-icon name="check" [size]="14" [strokeWidth]="2"></lucide-icon>
+                    Copied!
+                  } @else {
+                    <lucide-icon name="copy" [size]="14" [strokeWidth]="2"></lucide-icon>
+                    Copy
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monaco card -->
+          <div class="editor-card">
+            <div class="editor-toolbar">
+              <div class="toolbar-left">
+                <lucide-icon name="terminal" [size]="14" [strokeWidth]="2" class="toolbar-icon"></lucide-icon>
+                <span class="toolbar-filename font-mono">
+                  payload.{{ p.language || 'sh' }}
+                </span>
+              </div>
+              <div class="toolbar-right">
+                @if (isEditing()) {
+                  <span class="mode-badge mode-edit font-mono">EDIT</span>
+                } @else {
+                  <span class="mode-badge mode-readonly font-mono">READ-ONLY</span>
+                }
+                <span class="mode-badge mode-enc font-mono" title="Stored AES-256 encrypted server-side">
+                  <lucide-icon name="shield" [size]="11" [strokeWidth]="2"></lucide-icon>
+                  AES-256
+                </span>
+              </div>
+            </div>
+            <app-monaco-editor
+              [code]="displayedBody()"
+              [language]="p.language || 'shell'"
+              [readOnly]="!isEditing()"
+              (codeChange)="onBodyChange($event)"
+            />
+          </div>
+
+          <!-- Edit metadata (visible only in edit mode) -->
+          @if (isEditing()) {
+            <div class="meta-edit-card">
+              <h3 class="meta-edit-title font-mono">PAYLOAD METADATA</h3>
+              <div class="meta-grid">
+                <div class="form-group">
+                  <label class="form-label font-mono">TITLE</label>
+                  <input class="form-input" type="text" [(ngModel)]="editTitle" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label font-mono">LANGUAGE</label>
+                  <input class="form-input font-mono" type="text" placeholder="e.g. bash, python, powershell" [(ngModel)]="editLanguage" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label font-mono">CATEGORY</label>
+                  <select class="form-select" [(ngModel)]="editCategory">
+                    @for (cat of categories; track cat.key) {
+                      <option [value]="cat.key">{{ cat.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label font-mono">VISIBILITY</label>
+                  <select class="form-select" [(ngModel)]="editVisibility">
+                    <option value="private">Private</option>
+                    <option value="public">Public</option>
+                  </select>
+                </div>
+                <div class="form-group form-group-span">
+                  <label class="form-label font-mono">DESCRIPTION</label>
+                  <textarea class="form-textarea" rows="2" [(ngModel)]="editDescription"></textarea>
+                </div>
+                <div class="form-group form-group-span">
+                  <label class="form-label font-mono">TAGS (comma-separated)</label>
+                  <input class="form-input font-mono" type="text" placeholder="e.g. linux, reverse-shell, post-exploit" [(ngModel)]="editTagsRaw" />
+                </div>
+              </div>
+            </div>
+          }
+        } @else if (loading()) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading payloads...</p>
+          </div>
+        } @else if (payloads().length === 0 && !(auth.isAuthenticated$ | async)) {
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <lucide-icon name="lock" [size]="42" [strokeWidth]="1.5" class="empty-icon"></lucide-icon>
+            </div>
+            <h2 class="empty-title font-mono">SIGN IN REQUIRED</h2>
+            <p class="empty-description">
+              Sign in to manage your cyber toolbox. Public payloads remain visible for everyone.
+            </p>
+            <button class="btn btn-primary" (click)="auth.login()">Sign in</button>
+          </div>
+        } @else if (payloads().length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <lucide-icon name="wrench" [size]="42" [strokeWidth]="1.5" class="empty-icon"></lucide-icon>
+            </div>
+            <h2 class="empty-title font-mono">NO PAYLOADS YET</h2>
+            <p class="empty-description">
+              Start building your offensive/defensive toolbox. All payload bodies are encrypted
+              with AES-256 before being stored on the server.
+            </p>
+            <button class="btn btn-primary" (click)="openCreateDialog()">
+              <lucide-icon name="plus" [size]="14" [strokeWidth]="2"></lucide-icon>
+              Create your first entry
+            </button>
+          </div>
+        } @else {
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <lucide-icon name="wrench" [size]="42" [strokeWidth]="1.5" class="empty-icon"></lucide-icon>
+            </div>
+            <h2 class="empty-title font-mono">SELECT A PAYLOAD</h2>
+            <p class="empty-description">
+              Pick one from the sidebar to preview and manage it.
+            </p>
+          </div>
+        }
+
+        <!-- Security notice -->
+        <div class="security-notice">
+          <lucide-icon name="alert-triangle" [size]="18" [strokeWidth]="2" class="notice-icon"></lucide-icon>
+          <div class="notice-body">
+            <h4 class="notice-title font-mono">SERVER-SIDE ENCRYPTION</h4>
+            <p class="notice-text">
+              Payload bodies are encrypted with <strong>AES-256-GCM</strong> and base64-encoded
+              before they touch PostgreSQL, so an AV scanning the host filesystem never sees
+              plaintext offensive code. Meilisearch only indexes metadata (title, description, tags,
+              language) — never the payload body.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create Dialog -->
+      @if (showCreateDialog()) {
+        <div class="dialog-backdrop" (click)="closeCreateDialog()">
+          <div class="dialog" (click)="$event.stopPropagation()">
+            <div class="dialog-header">
+              <h3 class="dialog-title">
+                <lucide-icon name="plus" [size]="18" [strokeWidth]="2"></lucide-icon>
+                New Payload
+              </h3>
+              <button class="dialog-close" (click)="closeCreateDialog()">
+                <lucide-icon name="x" [size]="18" [strokeWidth]="2"></lucide-icon>
+              </button>
+            </div>
+            <div class="dialog-body">
+              <div class="form-group">
+                <label class="form-label font-mono">TITLE</label>
+                <input class="form-input" type="text" placeholder="e.g. Bash reverse shell" [(ngModel)]="newTitle" />
+              </div>
+              <div class="form-group">
+                <label class="form-label font-mono">DESCRIPTION</label>
+                <textarea class="form-textarea" rows="2" placeholder="What does this do?" [(ngModel)]="newDescription"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label font-mono">CATEGORY</label>
+                  <select class="form-select" [(ngModel)]="newCategory">
+                    @for (cat of categories; track cat.key) {
+                      <option [value]="cat.key">{{ cat.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label font-mono">VISIBILITY</label>
+                  <select class="form-select" [(ngModel)]="newVisibility">
+                    <option value="private">Private</option>
+                    <option value="public">Public</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label font-mono">LANGUAGE</label>
+                <input class="form-input font-mono" type="text" placeholder="e.g. bash, python, powershell" [(ngModel)]="newLanguage" />
+              </div>
+              <div class="form-group">
+                <label class="form-label font-mono">TAGS (comma-separated)</label>
+                <input class="form-input font-mono" type="text" placeholder="e.g. linux, reverse-shell" [(ngModel)]="newTagsRaw" />
+              </div>
+              <div class="form-group">
+                <label class="form-label font-mono">BODY</label>
+                <textarea class="form-textarea font-mono" rows="8" placeholder="# Your payload..." [(ngModel)]="newBody"></textarea>
+              </div>
+            </div>
+            <div class="dialog-footer">
+              <button class="btn btn-ghost" (click)="closeCreateDialog()">Cancel</button>
+              <button
+                class="btn btn-primary"
+                [disabled]="!newTitle.trim() || !newBody.trim()"
+                (click)="createPayload()"
+              >
+                <lucide-icon name="plus" [size]="14" [strokeWidth]="2"></lucide-icon>
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Error Toast -->
+      @if (errorMessage()) {
+        <div class="error-toast">
+          <lucide-icon name="alert-triangle" [size]="16" [strokeWidth]="2"></lucide-icon>
+          {{ errorMessage() }}
+          <button class="toast-close" (click)="errorMessage.set('')">
+            <lucide-icon name="x" [size]="14" [strokeWidth]="2"></lucide-icon>
+          </button>
+        </div>
+      }
     </div>
   `,
   styles: [`
-    .page { padding: 1rem 0; }
-    .page-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--foreground);
-      margin-bottom: 0.25rem;
+    .cyber-toolbox { display: flex; height: calc(100vh - 7rem); margin: -1.5rem; }
+    .ctb-sidebar {
+      width: 16rem; min-width: 16rem; height: 100%;
+      background: var(--card); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
     }
-    .page-subtitle {
-      font-size: 0.875rem;
-      color: var(--muted-foreground);
+    .sidebar-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem .75rem .75rem; border-bottom: 1px solid var(--border);
+    }
+    .sidebar-title {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .875rem; font-weight: 600; color: var(--destructive);
+    }
+    .btn-new {
+      display: flex; align-items: center; justify-content: center;
+      width: 1.75rem; height: 1.75rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: transparent;
+      color: var(--destructive); cursor: pointer;
+    }
+    .btn-new:hover { background: var(--destructive); color: var(--destructive-foreground); }
+    .sidebar-search { position: relative; padding: .75rem; }
+    .search-icon {
+      position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%);
+      color: var(--muted-foreground); pointer-events: none;
+    }
+    .search-input {
+      width: 100%; height: 2rem; padding: 0 .5rem 0 2rem;
+      background: var(--input-background); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--foreground);
+      font-size: .75rem; outline: none;
+    }
+    .search-input:focus { border-color: var(--destructive); }
+    .sidebar-visibility-toggle { display: flex; gap: .25rem; padding: 0 .75rem .5rem; }
+    .vis-btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+      height: 1.75rem; padding: 0 .5rem; border: 1px solid var(--border);
+      background: transparent; border-radius: var(--radius);
+      color: var(--muted-foreground); font-size: .6875rem; font-family: inherit; cursor: pointer;
+    }
+    .vis-btn:hover:not(.active) { background: var(--secondary); color: var(--foreground); }
+    .vis-btn.active { background: var(--destructive); border-color: var(--destructive); color: var(--destructive-foreground); }
+    .sidebar-tree { flex: 1; overflow-y: auto; padding: .25rem 0; }
+    .empty-tree {
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      padding: 1.5rem 1rem; color: var(--muted-foreground); font-size: .8125rem;
+    }
+    .empty-tree .empty-icon { opacity: .5; }
+    .tree-group { margin-bottom: .125rem; }
+    .tree-folder {
+      display: flex; align-items: center; gap: .375rem; width: 100%;
+      padding: .375rem .75rem; border: none; background: transparent;
+      color: var(--foreground); font-size: .8125rem; font-weight: 500;
+      font-family: inherit; cursor: pointer;
+    }
+    .tree-folder:hover { background: var(--secondary); }
+    .folder-icon { color: var(--destructive); }
+    .folder-name { flex: 1; text-align: left; }
+    .folder-count {
+      font-size: .6875rem; color: var(--muted-foreground); background: var(--secondary);
+      padding: .0625rem .375rem; border-radius: 9999px; font-family: 'JetBrains Mono', monospace;
+    }
+    .tree-items { padding-left: .5rem; }
+    .tree-item {
+      display: flex; align-items: center; gap: .375rem; width: 100%;
+      padding: .3125rem .75rem .3125rem 1.25rem; border: none; background: transparent;
+      color: var(--muted-foreground); font-size: .75rem; font-family: inherit;
+      cursor: pointer; text-align: left;
+    }
+    .tree-item:hover { background: var(--secondary); color: var(--foreground); }
+    .tree-item.active { background: color-mix(in srgb, var(--destructive) 15%, transparent); color: var(--destructive); }
+    .item-icon { flex-shrink: 0; }
+    .item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-vis {
+      font-size: .5625rem; padding: .0625rem .3125rem; border-radius: .25rem;
+      background: var(--secondary); color: var(--muted-foreground); letter-spacing: .05em;
+    }
+    .item-vis.is-private { background: color-mix(in srgb, var(--destructive) 15%, transparent); color: var(--destructive); }
+    .main-content {
+      flex: 1; overflow-y: auto; padding: 1.5rem;
+      display: flex; flex-direction: column; gap: 1rem; min-width: 0;
+    }
+    .header-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--destructive); border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+    }
+    .header-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 1rem; flex-wrap: wrap;
+    }
+    .header-left { flex: 1; min-width: 0; }
+    .payload-title { font-size: 1.375rem; font-weight: 700; color: var(--foreground); margin: 0 0 .25rem; }
+    .payload-description { font-size: .875rem; color: var(--muted-foreground); margin: 0 0 .5rem; line-height: 1.5; }
+    .header-meta { display: flex; align-items: center; gap: .375rem; flex-wrap: wrap; }
+    .pill {
+      font-size: .6875rem; padding: .1875rem .5rem; border-radius: var(--radius);
+      font-weight: 500; background: var(--secondary); color: var(--muted-foreground);
+      text-transform: uppercase; letter-spacing: .02em;
+    }
+    .pill-category { background: color-mix(in srgb, var(--destructive) 12%, transparent); color: var(--destructive); }
+    .pill-language { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+    .pill-visibility.is-private { background: color-mix(in srgb, var(--destructive) 15%, transparent); color: var(--destructive); }
+    .pill-owner { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); text-transform: none; }
+    .pill-tag { background: var(--secondary); color: var(--muted-foreground); text-transform: none; }
+    .header-actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .375rem;
+      padding: .5rem .875rem; border-radius: var(--radius); border: none;
+      font-family: inherit; font-size: .8125rem; font-weight: 500;
+      cursor: pointer; white-space: nowrap;
+    }
+    .btn:disabled { opacity: .7; cursor: default; }
+    .btn-primary { background: var(--destructive); color: var(--destructive-foreground); }
+    .btn-primary:hover:not(:disabled) { opacity: .9; }
+    .btn-outline { background: transparent; color: var(--foreground); border: 1px solid var(--border); }
+    .btn-outline:hover { background: var(--secondary); }
+    .btn-ghost { background: transparent; color: var(--muted-foreground); }
+    .btn-ghost:hover { background: var(--secondary); color: var(--foreground); }
+    .btn-danger { background: transparent; color: var(--destructive); border: 1px solid var(--destructive); }
+    .btn-danger:hover { background: var(--destructive); color: var(--destructive-foreground); }
+    .editor-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .editor-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .5rem .75rem; background: var(--secondary); border-bottom: 1px solid var(--border);
+    }
+    .toolbar-left { display: flex; align-items: center; gap: .5rem; }
+    .toolbar-icon { color: var(--destructive); }
+    .toolbar-filename { font-size: .75rem; color: var(--muted-foreground); }
+    .toolbar-right { display: flex; align-items: center; gap: .375rem; }
+    .mode-badge {
+      display: inline-flex; align-items: center; gap: .25rem;
+      font-size: .625rem; padding: .125rem .5rem; border-radius: var(--radius);
+      font-weight: 600; letter-spacing: .05em;
+    }
+    .mode-readonly { background: var(--secondary); color: var(--muted-foreground); border: 1px solid var(--border); }
+    .mode-edit { background: color-mix(in srgb, var(--destructive) 15%, transparent); color: var(--destructive); }
+    .mode-enc { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+    .meta-edit-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+    .meta-edit-title { font-size: .75rem; font-weight: 600; color: var(--destructive); letter-spacing: .08em; margin: 0 0 .75rem; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .form-group-span { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: .375rem; }
+    .form-label { font-size: .6875rem; font-weight: 600; color: var(--muted-foreground); letter-spacing: .05em; }
+    .form-input, .form-select {
+      height: 2.375rem; padding: 0 .625rem; background: var(--input-background);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--foreground); font-size: .8125rem; font-family: inherit; outline: none;
+    }
+    .form-textarea {
+      padding: .5rem .625rem; background: var(--input-background);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--foreground); font-size: .8125rem; font-family: inherit;
+      outline: none; resize: vertical; line-height: 1.5;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--destructive); }
+    .form-select { cursor: pointer; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .empty-state, .loading-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1rem; padding: 3rem 1rem; flex: 1; text-align: center;
+    }
+    .loading-state { color: var(--muted-foreground); font-size: .875rem; }
+    .empty-icon-wrap {
+      width: 4rem; height: 4rem; display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--destructive); border-radius: var(--radius);
+      background: color-mix(in srgb, var(--destructive) 8%, transparent);
+    }
+    .empty-icon { color: var(--destructive); }
+    .empty-title { font-size: 1rem; font-weight: 700; color: var(--foreground); letter-spacing: .08em; }
+    .empty-description { font-size: .875rem; color: var(--muted-foreground); max-width: 28rem; line-height: 1.6; }
+    .spinner {
+      width: 2rem; height: 2rem; border: 2px solid var(--border);
+      border-top-color: var(--destructive); border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .security-notice {
+      display: flex; align-items: flex-start; gap: .75rem;
+      padding: 1rem 1.25rem; border: 1px solid var(--destructive); border-left-width: 3px;
+      background: color-mix(in srgb, var(--destructive) 10%, transparent);
+      border-radius: var(--radius); margin-top: auto;
+    }
+    .notice-icon { color: var(--destructive); flex-shrink: 0; margin-top: .125rem; }
+    .notice-body { flex: 1; min-width: 0; }
+    .notice-title { font-size: .75rem; font-weight: 700; color: var(--destructive); letter-spacing: .08em; margin: 0 0 .25rem; }
+    .notice-text { font-size: .8125rem; color: var(--foreground); line-height: 1.5; margin: 0; }
+    .dialog-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; backdrop-filter: blur(2px);
+    }
+    .dialog {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      width: 100%; max-width: 36rem; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+    }
+    .dialog-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+    }
+    .dialog-title { display: flex; align-items: center; gap: .5rem; font-size: 1rem; font-weight: 600; color: var(--foreground); }
+    .dialog-close {
+      display: flex; align-items: center; justify-content: center;
+      width: 2rem; height: 2rem; border-radius: var(--radius); border: none;
+      background: transparent; color: var(--muted-foreground); cursor: pointer;
+    }
+    .dialog-close:hover { background: var(--secondary); color: var(--foreground); }
+    .dialog-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+    .dialog-footer {
+      display: flex; justify-content: flex-end; gap: .5rem;
+      padding: 1rem 1.25rem; border-top: 1px solid var(--border);
+    }
+    .error-toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      display: flex; align-items: center; gap: .5rem;
+      padding: .75rem 1rem; background: var(--destructive); color: var(--destructive-foreground);
+      border-radius: var(--radius); font-size: .8125rem; z-index: 200;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,.1);
+    }
+    .toast-close { border: none; background: transparent; color: inherit; cursor: pointer; margin-left: .5rem; opacity: .7; }
+    .toast-close:hover { opacity: 1; }
+    @media (max-width: 900px) {
+      .cyber-toolbox { flex-direction: column; height: auto; }
+      .ctb-sidebar { width: 100%; min-width: 0; max-height: 14rem; border-right: none; border-bottom: 1px solid var(--border); }
+      .main-content { padding: 1rem; }
+      .meta-grid, .form-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .header-actions { width: 100%; }
+      .header-actions .btn { flex: 1; justify-content: center; }
     }
   `],
 })
-export class CyberToolboxComponent {}
+export class CyberToolboxComponent implements OnInit {
+  readonly payloadService = inject(PayloadService);
+  readonly auth = inject(AuthService);
+  private readonly platformId = inject(PLATFORM_ID);
+
+  readonly categories = CATEGORIES;
+
+  readonly payloads = signal<PayloadListItem[]>([]);
+  readonly selected = signal<Payload | null>(null);
+  readonly loading = signal(false);
+  readonly errorMessage = signal('');
+
+  readonly filterText = signal('');
+  readonly privateOnly = signal(false);
+  readonly expandedCategories = signal<Set<PayloadCategory>>(
+    new Set<PayloadCategory>(['recon', 'exploitation', 'privesc', 'post-exploitation', 'defense', 'other']),
+  );
+
+  readonly isEditing = signal(false);
+  readonly copySuccess = signal(false);
+  readonly showCreateDialog = signal(false);
+
+  // Edit buffers
+  editTitle = '';
+  editDescription = '';
+  editLanguage = '';
+  editCategory: PayloadCategory = 'other';
+  editVisibility: PayloadVisibility = 'private';
+  editTagsRaw = '';
+  private editedBody = '';
+
+  // Create dialog buffers
+  newTitle = '';
+  newDescription = '';
+  newLanguage = 'bash';
+  newCategory: PayloadCategory = 'recon';
+  newVisibility: PayloadVisibility = 'private';
+  newTagsRaw = '';
+  newBody = '';
+
+  // Reactive user state
+  private readonly currentUserId = signal<string | null>(null);
+  private readonly currentUsername = signal<string | null>(null);
+  private readonly isAdmin = signal(false);
+
+  readonly canModifySelected = computed(() => {
+    const p = this.selected();
+    if (!p) return false;
+    const uid = this.currentUserId();
+    const uname = this.currentUsername();
+    if (uid && p.owner.id === uid) return true;
+    if (uname && p.owner.username === uname) return true;
+    return this.isAdmin() && p.visibility === 'public';
+  });
+
+  /** What Monaco shows: persisted body when read-only, buffered edits when editing. */
+  readonly displayedBody = computed(() => {
+    const p = this.selected();
+    if (!p) return '';
+    return this.isEditing() ? this.editedBody : p.body;
+  });
+
+  readonly filteredGroups = computed(() => {
+    const q = this.filterText().trim().toLowerCase();
+    const privateOnly = this.privateOnly();
+    const items = this.payloads().filter(p => {
+      if (privateOnly && p.visibility !== 'private') return false;
+      if (!q) return true;
+      if (p.title.toLowerCase().includes(q)) return true;
+      if (p.description?.toLowerCase().includes(q)) return true;
+      if (p.language?.toLowerCase().includes(q)) return true;
+      if (p.tags.some(t => t.name.toLowerCase().includes(q))) return true;
+      return false;
+    });
+
+    return CATEGORIES
+      .map(cat => ({
+        key: cat.key,
+        label: cat.label,
+        items: items.filter(p => p.category === cat.key),
+      }))
+      .filter(g => g.items.length > 0);
+  });
+
+  constructor() {
+    this.auth.userData$.subscribe(user => {
+      this.currentUsername.set(user?.username ?? null);
+      // We don't have the numeric/uuid user id from userinfo; username is the
+      // primary comparator. Keeping the id slot for symmetry with spec.
+      this.currentUserId.set(null);
+    });
+    this.auth.isAdmin$.subscribe(isAdmin => this.isAdmin.set(isAdmin));
+  }
+
+  ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadPayloads();
+    }
+  }
+
+  loadPayloads(): void {
+    this.loading.set(true);
+    this.payloadService.list().subscribe({
+      next: (items) => {
+        this.payloads.set(items);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load payloads', err);
+        this.loading.set(false);
+        if (err.status !== 401 && err.status !== 403) {
+          this.showError('Failed to load payloads. Please try again.');
+        }
+      },
+    });
+  }
+
+  categoryLabel(key: PayloadCategory): string {
+    return CATEGORIES.find(c => c.key === key)?.label ?? key;
+  }
+
+  toggleCategory(key: PayloadCategory): void {
+    const next = new Set(this.expandedCategories());
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    this.expandedCategories.set(next);
+  }
+
+  onSelectPayload(item: PayloadListItem): void {
+    this.isEditing.set(false);
+    this.loading.set(true);
+    this.payloadService.get(item.id).subscribe({
+      next: (payload) => {
+        this.selected.set(payload);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load payload', err);
+        this.loading.set(false);
+        this.showError('Failed to load payload details.');
+      },
+    });
+  }
+
+  startEdit(): void {
+    const p = this.selected();
+    if (!p) return;
+    this.editTitle = p.title;
+    this.editDescription = p.description ?? '';
+    this.editLanguage = p.language ?? '';
+    this.editCategory = p.category;
+    this.editVisibility = p.visibility;
+    this.editTagsRaw = p.tags.map(t => t.name).join(', ');
+    this.editedBody = p.body;
+    this.isEditing.set(true);
+  }
+
+  cancelEdit(): void {
+    this.isEditing.set(false);
+  }
+
+  onBodyChange(code: string): void {
+    this.editedBody = code;
+  }
+
+  onSaveEdits(): void {
+    const p = this.selected();
+    if (!p) return;
+    const tags = this.parseTags(this.editTagsRaw);
+    this.payloadService.update(p.id, {
+      title: this.editTitle.trim() || p.title,
+      description: this.editDescription.trim() || null,
+      category: this.editCategory,
+      language: this.editLanguage.trim() || null,
+      visibility: this.editVisibility,
+      body: this.editedBody,
+      tags,
+    }).subscribe({
+      next: (updated) => {
+        this.selected.set(updated);
+        this.isEditing.set(false);
+        this.loadPayloads();
+      },
+      error: () => this.showError('Failed to save payload.'),
+    });
+  }
+
+  confirmDelete(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const p = this.selected();
+    if (!p) return;
+    if (!window.confirm(`Delete payload "${p.title}"? This cannot be undone.`)) return;
+    this.payloadService.delete(p.id).subscribe({
+      next: () => {
+        this.selected.set(null);
+        this.loadPayloads();
+      },
+      error: () => this.showError('Failed to delete payload.'),
+    });
+  }
+
+  async copyBody(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const p = this.selected();
+    if (!p) return;
+    const text = this.isEditing() ? this.editedBody : p.body;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copySuccess.set(true);
+      setTimeout(() => this.copySuccess.set(false), 2000);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      this.copySuccess.set(true);
+      setTimeout(() => this.copySuccess.set(false), 2000);
+    }
+  }
+
+  openCreateDialog(): void {
+    this.newTitle = '';
+    this.newDescription = '';
+    this.newLanguage = 'bash';
+    this.newCategory = 'recon';
+    this.newVisibility = 'private';
+    this.newTagsRaw = '';
+    this.newBody = '';
+    this.showCreateDialog.set(true);
+  }
+
+  closeCreateDialog(): void {
+    this.showCreateDialog.set(false);
+  }
+
+  createPayload(): void {
+    if (!this.newTitle.trim() || !this.newBody.trim()) return;
+    const input: PayloadCreateInput = {
+      title: this.newTitle.trim(),
+      description: this.newDescription.trim() || null,
+      category: this.newCategory,
+      language: this.newLanguage.trim() || null,
+      visibility: this.newVisibility,
+      body: this.newBody,
+      tags: this.parseTags(this.newTagsRaw),
+    };
+    this.payloadService.create(input).subscribe({
+      next: (created) => {
+        this.closeCreateDialog();
+        this.loadPayloads();
+        this.selected.set(created);
+      },
+      error: () => this.showError('Failed to create payload.'),
+    });
+  }
+
+  private parseTags(raw: string): string[] {
+    return raw
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(s => s.length > 0);
+  }
+
+  private showError(message: string): void {
+    this.errorMessage.set(message);
+    setTimeout(() => this.errorMessage.set(''), 5000);
+  }
+}
