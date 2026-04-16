@@ -22,6 +22,7 @@ services:
       KEYCLOAK_CLIENT_ID: "${KEYCLOAK_CLIENT_ID}"
       MEILI_URL: "http://dsv-meilisearch:7700"
       MEILI_MASTER_KEY: "${MEILI_MASTER_KEY}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
       CORS_ALLOW_ORIGIN: "^https?://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?$$"
     expose:
       - "9000"
