@@ -2,11 +2,15 @@ import { Component, inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from './core/services/auth.service';
+import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  template: '<router-outlet />',
+  imports: [RouterOutlet, ConfirmDialogComponent],
+  template: `
+    <router-outlet />
+    <app-confirm-dialog />
+  `,
 })
 export class App implements OnInit {
   private readonly auth = inject(AuthService);

@@ -55,6 +55,7 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen };
         @if (selectedConcept(); as concept) {
           <app-concept-editor
             [concept]="concept"
+            [preferredLanguage]="preferredLanguage()"
             [canModify]="canModifySelected()"
             (saveSnippet)="onSaveSnippet($event)"
             (addSnippet)="openAddSnippetDialog()"
@@ -481,6 +482,8 @@ export class DevLibraryComponent implements OnInit {
 
   readonly concepts = signal<ConceptListItem[]>([]);
   readonly selectedConcept = signal<Concept | null>(null);
+  /** Language the user clicked in the sidebar (null = fallback to first snippet). */
+  readonly preferredLanguage = signal<string | null>(null);
   readonly loading = signal(false);
   readonly errorMessage = signal('');
   readonly showCreateDialog = signal(false);
@@ -542,9 +545,10 @@ export class DevLibraryComponent implements OnInit {
     });
   }
 
-  onSelectConcept(item: ConceptListItem): void {
+  onSelectConcept(event: { concept: ConceptListItem; language: string }): void {
+    this.preferredLanguage.set(event.language);
     this.loading.set(true);
-    this.conceptService.getConcept(item.id).subscribe({
+    this.conceptService.getConcept(event.concept.id).subscribe({
       next: (concept) => {
         this.selectedConcept.set(concept);
         this.loading.set(false);

@@ -27,10 +27,12 @@ import {
   Shield,
   Terminal,
   Trash2,
+  Variable,
   Wrench,
   X,
 } from 'lucide-angular';
 import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
+import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { AuthService } from '../../core/services/auth.service';
 import { PayloadService } from '../../core/services/payload.service';
 import {
@@ -57,9 +59,15 @@ const icons = {
   Shield,
   Terminal,
   Trash2,
+  Variable,
   Wrench,
   X,
 };
+
+interface TemplateVariable {
+  name: string;
+  value: string;
+}
 
 interface CategoryMeta {
   key: PayloadCategory;
@@ -260,6 +268,34 @@ const CATEGORIES: CategoryMeta[] = [
               (codeChange)="onBodyChange($event)"
             />
           </div>
+
+          <!-- Template Variables -->
+          @if (templateVariables().length > 0) {
+            <div class="vars-card">
+              <div class="vars-header">
+                <lucide-icon name="variable" [size]="14" [strokeWidth]="2" class="vars-icon"></lucide-icon>
+                <h3 class="vars-title font-mono">TEMPLATE VARIABLES</h3>
+                <span class="vars-count font-mono">{{ templateVariables().length }}</span>
+                <span class="vars-hint">
+                  Fill values to replace <code class="font-mono">{{ '{{VAR}}' }}</code> live in the preview + Copy output
+                </span>
+              </div>
+              <div class="vars-grid">
+                @for (variable of templateVariables(); track variable.name) {
+                  <div class="var-field">
+                    <label class="var-label font-mono">{{ '{{' + variable.name + '}}' }}</label>
+                    <input
+                      type="text"
+                      class="var-input font-mono"
+                      [placeholder]="variable.name"
+                      [ngModel]="variable.value"
+                      (ngModelChange)="updateVariable(variable.name, $event)"
+                    />
+                  </div>
+                }
+              </div>
+            </div>
+          }
 
           <!-- Edit metadata (visible only in edit mode) -->
           @if (isEditing()) {
@@ -576,6 +612,53 @@ const CATEGORIES: CategoryMeta[] = [
     .mode-readonly { background: var(--secondary); color: var(--muted-foreground); border: 1px solid var(--border); }
     .mode-edit { background: color-mix(in srgb, var(--destructive) 15%, transparent); color: var(--destructive); }
     .mode-enc { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+    .vars-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--destructive);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+    }
+    .vars-header { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap; }
+    .vars-icon { color: var(--destructive); }
+    .vars-title { font-size: .75rem; font-weight: 600; color: var(--destructive); letter-spacing: .08em; margin: 0; }
+    .vars-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.5rem; height: 1.25rem; padding: 0 .4rem;
+      border-radius: .625rem;
+      background: color-mix(in srgb, var(--destructive) 12%, transparent);
+      color: var(--destructive);
+      font-size: .6875rem; font-weight: 600;
+    }
+    .vars-hint { font-size: .75rem; color: var(--muted-foreground); margin-left: auto; }
+    .vars-hint code {
+      font-size: .6875rem; padding: .0625rem .25rem;
+      background: var(--secondary); border-radius: .25rem;
+    }
+    .vars-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+      gap: .75rem;
+    }
+    .var-field { display: flex; flex-direction: column; gap: .25rem; }
+    .var-label { font-size: .6875rem; color: var(--destructive); font-weight: 500; }
+    .var-input {
+      height: 2.25rem;
+      padding: 0 .625rem;
+      background: var(--input-background, var(--secondary));
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 2px);
+      color: var(--foreground);
+      font-size: .8125rem;
+      outline: none;
+      transition: border-color .15s ease;
+    }
+    .var-input::placeholder { color: var(--muted-foreground); opacity: .5; }
+    .var-input:focus { border-color: var(--destructive); }
+    @media (max-width: 560px) {
+      .vars-hint { margin-left: 0; width: 100%; }
+    }
+
     .meta-edit-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
     .meta-edit-title { font-size: .75rem; font-weight: 600; color: var(--destructive); letter-spacing: .08em; margin: 0 0 .75rem; }
     .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
@@ -674,6 +757,7 @@ const CATEGORIES: CategoryMeta[] = [
 export class CyberToolboxComponent implements OnInit {
   readonly payloadService = inject(PayloadService);
   readonly auth = inject(AuthService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly platformId = inject(PLATFORM_ID);
 
   readonly categories = CATEGORIES;
@@ -692,6 +776,13 @@ export class CyberToolboxComponent implements OnInit {
   readonly isEditing = signal(false);
   readonly copySuccess = signal(false);
   readonly showCreateDialog = signal(false);
+
+  /**
+   * Template variables: `{{NAME}}` placeholders detected in the payload body.
+   * Values are filled client-side at preview/copy time — substitution is never
+   * persisted, so the source body stays reusable.
+   */
+  readonly variableValues = signal<Map<string, string>>(new Map());
 
   // Edit buffers
   editTitle = '';
@@ -726,11 +817,29 @@ export class CyberToolboxComponent implements OnInit {
     return this.isAdmin() && p.visibility === 'public';
   });
 
-  /** What Monaco shows: persisted body when read-only, buffered edits when editing. */
+  /**
+   * What Monaco shows: raw body (with `{{VAR}}`) while editing so the source
+   * stays intact, or the substituted preview in read-only mode so users see
+   * what Copy will yield. Substitutions are client-side only.
+   */
   readonly displayedBody = computed(() => {
     const p = this.selected();
     if (!p) return '';
-    return this.isEditing() ? this.editedBody : p.body;
+    if (this.isEditing()) return this.editedBody;
+    return this.applyVariables(p.body);
+  });
+
+  /** Unique `{{VAR}}` names currently present in the selected payload's body. */
+  readonly templateVariables = computed((): TemplateVariable[] => {
+    const p = this.selected();
+    const source = p ? (this.isEditing() ? this.editedBody : p.body) : '';
+    if (!source) return [];
+    const names = new Set<string>();
+    const regex = /\{\{(\w+)\}\}/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(source)) !== null) names.add(match[1]);
+    const vals = this.variableValues();
+    return Array.from(names).map(name => ({ name, value: vals.get(name) ?? '' }));
   });
 
   readonly filteredGroups = computed(() => {
@@ -801,6 +910,7 @@ export class CyberToolboxComponent implements OnInit {
 
   onSelectPayload(item: PayloadListItem): void {
     this.isEditing.set(false);
+    this.variableValues.set(new Map());
     this.loading.set(true);
     this.payloadService.get(item.id).subscribe({
       next: (payload) => {
@@ -813,6 +923,22 @@ export class CyberToolboxComponent implements OnInit {
         this.showError('Failed to load payload details.');
       },
     });
+  }
+
+  updateVariable(name: string, value: string): void {
+    const next = new Map(this.variableValues());
+    next.set(name, value);
+    this.variableValues.set(next);
+  }
+
+  /** Replace every `{{NAME}}` with its buffered value. Unfilled placeholders stay visible. */
+  private applyVariables(source: string): string {
+    if (!source) return source;
+    let out = source;
+    for (const [name, value] of this.variableValues().entries()) {
+      if (value) out = out.replaceAll(`{{${name}}}`, value);
+    }
+    return out;
   }
 
   startEdit(): void {
@@ -858,11 +984,18 @@ export class CyberToolboxComponent implements OnInit {
     });
   }
 
-  confirmDelete(): void {
+  async confirmDelete(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
     const p = this.selected();
     if (!p) return;
-    if (!window.confirm(`Delete payload "${p.title}"? This cannot be undone.`)) return;
+    const ok = await this.confirmDialog.confirm({
+      title: `Delete payload "${p.title}"?`,
+      message: 'This action cannot be undone. The encrypted body will be permanently removed from the server.',
+      confirmLabel: 'Delete payload',
+      cancelLabel: 'Cancel',
+      variant: 'destructive',
+    });
+    if (!ok) return;
     this.payloadService.delete(p.id).subscribe({
       next: () => {
         this.selected.set(null);
@@ -876,7 +1009,10 @@ export class CyberToolboxComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
     const p = this.selected();
     if (!p) return;
-    const text = this.isEditing() ? this.editedBody : p.body;
+    // Always copy with variable substitutions applied — users expect the
+    // preview they see to match what lands in the clipboard.
+    const source = this.isEditing() ? this.editedBody : p.body;
+    const text = this.applyVariables(source);
     try {
       await navigator.clipboard.writeText(text);
       this.copySuccess.set(true);

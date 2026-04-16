@@ -28,6 +28,7 @@ import {
   Plus,
 } from 'lucide-angular';
 import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
+import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Concept, Snippet } from '../../core/models/concept.model';
 
 const icons = { Code, Copy, Check, Edit3, Save, Trash2, Terminal, Variable, Eye, Plus };
@@ -503,6 +504,8 @@ interface TemplateVariable {
 export class ConceptEditorComponent {
   /** Signal input so that `computed()`s below react to selection changes. */
   readonly concept = input.required<Concept>();
+  /** Language the user clicked in the sidebar; we select the matching snippet on change. */
+  readonly preferredLanguage = input<string | null>(null);
   @Input() canModify = false;
 
   @Output() saveSnippet = new EventEmitter<{ snippetId: string; code: string }>();
@@ -511,6 +514,7 @@ export class ConceptEditorComponent {
   @Output() deleteSnippet = new EventEmitter<Snippet>();
 
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly selectedSnippetIndex = signal(0);
   readonly isEditing = signal(false);
@@ -519,12 +523,20 @@ export class ConceptEditorComponent {
   readonly variableValues = signal<Map<string, string>>(new Map());
 
   constructor() {
-    // Reset UI state whenever the concept changes (new selection from sidebar).
+    // Reset UI state whenever the concept or preferred language changes
+    // (new selection from sidebar). If the user clicked a specific language
+    // folder, pick that snippet; otherwise default to the first one.
     effect(() => {
-      const id = this.concept().id;
-      // Silence unused var warnings; reading .id establishes the dependency.
-      void id;
-      this.selectedSnippetIndex.set(0);
+      const concept = this.concept();
+      const preferred = this.preferredLanguage();
+      let idx = 0;
+      if (preferred && concept.snippets?.length) {
+        const match = concept.snippets.findIndex(
+          s => s.language.toLowerCase() === preferred.toLowerCase(),
+        );
+        if (match >= 0) idx = match;
+      }
+      this.selectedSnippetIndex.set(idx);
       this.isEditing.set(false);
       this.variableValues.set(new Map());
     });
@@ -574,18 +586,28 @@ export class ConceptEditorComponent {
     this.isEditing.set(false);
   }
 
-  confirmDeleteConcept(): void {
+  async confirmDeleteConcept(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
-    if (window.confirm(`Delete concept "${this.concept().title}" and all its snippets? This cannot be undone.`)) {
-      this.deleteConcept.emit();
-    }
+    const ok = await this.confirmDialog.confirm({
+      title: `Delete concept "${this.concept().title}"?`,
+      message: 'All snippets under this concept will be removed. This action cannot be undone.',
+      confirmLabel: 'Delete concept',
+      cancelLabel: 'Cancel',
+      variant: 'destructive',
+    });
+    if (ok) this.deleteConcept.emit();
   }
 
-  confirmDeleteSnippet(snippet: Snippet): void {
+  async confirmDeleteSnippet(snippet: Snippet): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
-    if (window.confirm(`Delete the ${snippet.language} snippet from "${this.concept().title}"?`)) {
-      this.deleteSnippet.emit(snippet);
-    }
+    const ok = await this.confirmDialog.confirm({
+      title: `Delete the ${snippet.language} snippet?`,
+      message: `This removes the ${snippet.language} variant from "${this.concept().title}". Other language snippets in this concept stay intact.`,
+      confirmLabel: 'Delete snippet',
+      cancelLabel: 'Cancel',
+      variant: 'destructive',
+    });
+    if (ok) this.deleteSnippet.emit(snippet);
   }
 
   startEdit(): void {

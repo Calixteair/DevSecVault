@@ -23,7 +23,7 @@ class User implements UserInterface
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     #[ORM\GeneratedValue(strategy: 'CUSTOM')]
     #[ORM\CustomIdGenerator(class: 'doctrine.uuid_generator')]
-    #[Groups(['concept:list', 'concept:read', 'user:read'])]
+    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'user:read'])]
     private ?Uuid $id = null;
 
     #[ORM\Column(type: Types::STRING, length: 255, unique: true)]
@@ -33,7 +33,7 @@ class User implements UserInterface
     private string $email;
 
     #[ORM\Column(type: Types::STRING, length: 255)]
-    #[Groups(['concept:list', 'concept:read', 'user:read'])]
+    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'user:read'])]
     private string $username;
 
     #[ORM\Column(type: Types::STRING, length: 50)]

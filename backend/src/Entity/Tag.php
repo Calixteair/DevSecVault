@@ -21,15 +21,15 @@ class Tag
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     #[ORM\GeneratedValue(strategy: 'CUSTOM')]
     #[ORM\CustomIdGenerator(class: 'doctrine.uuid_generator')]
-    #[Groups(['concept:list', 'concept:read', 'tag:read'])]
+    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'tag:read'])]
     private ?Uuid $id = null;
 
     #[ORM\Column(type: Types::STRING, length: 100, unique: true)]
-    #[Groups(['concept:list', 'concept:read', 'tag:read'])]
+    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'tag:read'])]
     private string $name;
 
     #[ORM\Column(type: Types::BOOLEAN)]
-    #[Groups(['concept:list', 'concept:read', 'tag:read'])]
+    #[Groups(['concept:list', 'concept:read', 'payload:list', 'payload:read', 'tag:read'])]
     private bool $isOfficial = false;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]

@@ -112,7 +112,7 @@ interface LanguageGroup {
                   <button
                     class="tree-item"
                     [class.active]="selectedConceptId === concept.id"
-                    (click)="selectConcept.emit(concept)"
+                    (click)="selectConcept.emit({ concept, language: group.language })"
                   >
                     <lucide-icon name="file-code" [size]="14" [strokeWidth]="2" class="item-icon"></lucide-icon>
                     <span class="item-name">{{ concept.title }}</span>
@@ -380,7 +380,7 @@ export class ConceptSidebarComponent {
   @Input() canCreate = false;
   @Input() isAuthenticated = false;
 
-  @Output() selectConcept = new EventEmitter<ConceptListItem>();
+  @Output() selectConcept = new EventEmitter<{ concept: ConceptListItem; language: string }>();
   @Output() createConcept = new EventEmitter<void>();
 
   readonly filterText = signal('');
