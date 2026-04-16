@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, Signal, inject } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   LucideAngularModule,
   LUCIDE_ICONS,
@@ -15,7 +16,7 @@ import {
   Crown,
 } from 'lucide-angular';
 import { ThemeService } from '../../core/services/theme.service';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService, UserProfile } from '../../core/services/auth.service';
 
 const icons = { Search, User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown };
 
@@ -39,7 +40,8 @@ const icons = { Search, User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown };
 
       <div class="topbar-actions">
         @if (auth.isAuthenticated$ | async) {
-          @if (auth.userData$ | async; as user) {
+          @let user = userData();
+          @if (user !== null) {
             <div class="user-badge">
               @if (user.roles.includes('ROLE_ADMIN')) {
                 <lucide-icon name="shield" [size]="16" [strokeWidth]="2" class="role-icon role-admin"></lucide-icon>
@@ -209,4 +211,5 @@ const icons = { Search, User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown };
 export class TopbarComponent {
   readonly themeService = inject(ThemeService);
   readonly auth = inject(AuthService);
+  readonly userData: Signal<UserProfile | null> = toSignal(this.auth.userData$, { initialValue: null });
 }
