@@ -6,6 +6,7 @@ namespace App\Controller\Api;
 
 use App\Entity\User;
 use App\Search\MeilisearchClient;
+use App\Search\PayloadIndexer;
 use App\Search\SnippetIndexer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -71,6 +72,9 @@ final class SearchController extends AbstractController
 
         return [
             SnippetIndexer::INDEX => [
+                'filter' => $ownerFilter,
+            ],
+            PayloadIndexer::INDEX => [
                 'filter' => $ownerFilter,
             ],
         ];

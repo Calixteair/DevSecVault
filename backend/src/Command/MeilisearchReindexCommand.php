@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Search\PayloadIndexer;
 use App\Search\SnippetIndexer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -24,6 +25,7 @@ class MeilisearchReindexCommand extends Command
 {
     public function __construct(
         private readonly SnippetIndexer $snippetIndexer,
+        private readonly PayloadIndexer $payloadIndexer,
     ) {
         parent::__construct();
     }
@@ -34,8 +36,12 @@ class MeilisearchReindexCommand extends Command
         $io->title('Meilisearch reindex');
 
         $io->section('snippets');
-        $count = $this->snippetIndexer->reindexAll();
-        $io->success(sprintf('Reindexed %d snippet document(s).', $count));
+        $snippetCount = $this->snippetIndexer->reindexAll();
+        $io->success(sprintf('Reindexed %d snippet document(s).', $snippetCount));
+
+        $io->section('payloads');
+        $payloadCount = $this->payloadIndexer->reindexAll();
+        $io->success(sprintf('Reindexed %d payload document(s).', $payloadCount));
 
         return Command::SUCCESS;
     }
