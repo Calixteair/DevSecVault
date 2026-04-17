@@ -592,7 +592,7 @@ const CATEGORIES: CategoryMeta[] = [
     </div>
   `,
   styles: [`
-    .cyber-toolbox { display: flex; height: calc(100vh - 7rem); margin: -1.5rem; }
+    .cyber-toolbox { display: flex; height: calc(100dvh - 7rem); margin: -1.5rem; }
     .ctb-sidebar {
       width: 16rem; min-width: 16rem; height: 100%;
       background: var(--card); border-right: 1px solid var(--border);
@@ -932,6 +932,12 @@ const CATEGORIES: CategoryMeta[] = [
       .ctb-sidebar { width: 100%; min-width: 0; max-height: 14rem; border-right: none; border-bottom: 1px solid var(--border); }
       .main-content { padding: 1rem; }
       .meta-grid, .form-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .cyber-toolbox { margin: -1rem -0.75rem; min-height: calc(100dvh - 3.25rem - 2rem); }
+      .main-content { padding: 0.75rem; }
+      .dialog { padding: 1rem 0.5rem; }
+      .dialog-card { max-width: 100%; padding: 1rem; max-height: 90vh; }
     }
     @media (max-width: 560px) {
       .header-actions { width: 100%; }

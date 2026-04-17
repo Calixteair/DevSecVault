@@ -278,7 +278,7 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
   styles: [`
     .dev-library {
       display: flex;
-      height: calc(100vh - 4rem - 3rem);
+      height: calc(100dvh - 4rem - 3rem);
       margin: -1.5rem;
     }
 
@@ -287,6 +287,7 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
       flex: 1;
       overflow-y: auto;
       padding: 1.5rem;
+      min-width: 0;
     }
 
     /* Empty State */
@@ -647,6 +648,32 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
     }
     .toast-close:hover {
       opacity: 1;
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 768px) {
+      .dev-library {
+        flex-direction: column;
+        height: auto;
+        min-height: calc(100dvh - 3.25rem - 2rem);
+        margin: -1rem -0.75rem;
+      }
+      .main-content {
+        padding: 1rem 0.75rem;
+      }
+      .dialog {
+        padding: 1.25rem 0.5rem;
+      }
+      .dialog-card {
+        max-width: 100%;
+        padding: 1rem;
+        max-height: 90vh;
+      }
+    }
+    @media (max-width: 560px) {
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
     }
   `],
 })

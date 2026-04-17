@@ -572,6 +572,22 @@ type InviteExpiryChoice = 1 | 7 | 30;
     @media (max-width: 860px) {
       .layout { grid-template-columns: 1fr; }
     }
+    @media (max-width: 768px) {
+      .teams-page { padding: 0.75rem 0 2rem; gap: 0.75rem; }
+      .page-header { flex-wrap: wrap; gap: 0.5rem; }
+      .page-title { font-size: 1rem; }
+      .page-subtitle { font-size: 0.75rem; }
+      .page-header-actions { width: 100%; }
+      .page-header-actions .btn { width: 100%; justify-content: center; }
+      .card { padding: 0.875rem; }
+      .detail-header { flex-direction: column; align-items: flex-start; }
+      .detail-header-actions { width: 100%; }
+      .detail-header-actions .btn { flex: 1; justify-content: center; }
+      .detail-title { font-size: 1rem; }
+      .invite-item { grid-template-columns: 1fr; gap: 0.375rem; }
+      .invite-actions { justify-content: flex-end; }
+      .invite-url { font-size: 0.6875rem; }
+    }
 
     .team-list-items {
       list-style: none; padding: 0; margin: 0;

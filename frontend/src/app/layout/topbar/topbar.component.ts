@@ -558,6 +558,47 @@ const icons = { Search, User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Cod
       font-size: 0.8125rem;
       color: var(--muted-foreground);
     }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 768px) {
+      .topbar {
+        height: 3.25rem;
+        min-height: 3.25rem;
+        padding: 0 0.75rem;
+        gap: 0.5rem;
+      }
+      .search-input {
+        font-size: 0.75rem;
+        height: 2rem;
+      }
+      .search-kbd { display: none; }
+      .search-input { padding-right: 2rem; }
+      .search-clear { right: 0.5rem; }
+      .user-badge .user-name,
+      .user-badge .user-role { display: none; }
+      .topbar-actions { gap: 0.375rem; }
+      .icon-btn { width: 2rem; height: 2rem; }
+      .login-btn { padding: 0 0.5rem; height: 2rem; font-size: 0.75rem; }
+      .login-btn span { display: none; }
+      .notif-dropdown {
+        position: fixed;
+        top: 3.25rem;
+        left: 0.5rem;
+        right: 0.5rem;
+        width: auto;
+      }
+      .search-dropdown {
+        position: fixed;
+        top: 3.25rem;
+        left: 0;
+        right: 0;
+        border-radius: 0;
+        max-height: 60vh;
+      }
+    }
+    @media (max-width: 480px) {
+      .search-input::placeholder { font-size: 0.6875rem; }
+    }
   `],
 })
 export class TopbarComponent implements OnDestroy {

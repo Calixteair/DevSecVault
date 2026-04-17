@@ -227,6 +227,13 @@ type ViewerState =
       color: var(--muted-foreground);
       font-size: 0.6875rem; letter-spacing: 0.08em; text-transform: uppercase;
     }
+
+    @media (max-width: 480px) {
+      .viewer-shell { padding: 1rem 0.75rem; }
+      .viewer-panel { padding: 1.25rem 1rem 1rem; }
+      .panel-title { font-size: 1rem; }
+      .panel-icon { width: 44px; height: 44px; }
+    }
   `],
 })
 export class SecretViewerComponent implements OnInit {

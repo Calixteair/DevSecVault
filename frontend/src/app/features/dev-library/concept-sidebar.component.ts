@@ -360,6 +360,17 @@ interface LanguageGroup {
       color: var(--muted-foreground);
       opacity: 0.7;
     }
+
+    @media (max-width: 768px) {
+      .concept-sidebar {
+        width: 100%;
+        min-width: 0;
+        height: auto;
+        max-height: 14rem;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
   `],
 })
 export class ConceptSidebarComponent {

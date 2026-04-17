@@ -821,6 +821,21 @@ export interface ConceptEditPayload {
       color: var(--destructive-foreground);
       opacity: 1;
     }
+    @media (max-width: 768px) {
+      .editor-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+      }
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+      }
+      .variables-grid {
+        grid-template-columns: 1fr;
+      }
+    }
     @media (max-width: 560px) {
       .shared-teams-hint { margin-left: 0; width: 100%; }
     }

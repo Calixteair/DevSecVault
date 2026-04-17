@@ -25,6 +25,8 @@ interface NavItem {
   label: string;
   requiresAuth?: boolean;
   requiresAdmin?: boolean;
+  /** If true, shown in the mobile bottom bar (max ~5 items). */
+  mobile?: boolean;
 }
 
 @Component({
@@ -34,7 +36,8 @@ interface NavItem {
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
   template: `
-    <nav class="sidebar">
+    <!-- Desktop sidebar -->
+    <nav class="sidebar desktop-only">
       <div class="sidebar-top">
         <a routerLink="/dashboard" class="logo">D</a>
       </div>
@@ -54,30 +57,36 @@ interface NavItem {
       </div>
 
       <div class="sidebar-bottom">
-        <a
-          routerLink="/settings"
-          routerLinkActive="active"
-          class="nav-item"
-          title="Settings"
-        >
+        <a routerLink="/settings" routerLinkActive="active" class="nav-item" title="Settings">
           <lucide-icon name="settings" [size]="20" [strokeWidth]="2"></lucide-icon>
         </a>
-        <a
-          routerLink="/profile"
-          routerLinkActive="active"
-          class="nav-item"
-          title="Profile"
-        >
+        <a routerLink="/profile" routerLinkActive="active" class="nav-item" title="Profile">
           <lucide-icon name="user" [size]="20" [strokeWidth]="2"></lucide-icon>
         </a>
       </div>
     </nav>
+
+    <!-- Mobile bottom tab bar -->
+    <nav class="bottom-bar mobile-only">
+      @for (item of mobileNavItems(); track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.path === '/dashboard' }"
+          class="bottom-item"
+        >
+          <lucide-icon [name]="item.icon" [size]="20" [strokeWidth]="2"></lucide-icon>
+          <span class="bottom-label">{{ item.label }}</span>
+        </a>
+      }
+    </nav>
   `,
   styles: [`
+    /* ---- Desktop sidebar ---- */
     .sidebar {
       width: 4rem;
       min-width: 4rem;
-      height: 100vh;
+      height: 100dvh;
       background: var(--sidebar);
       border-right: 1px solid var(--sidebar-border);
       display: flex;
@@ -85,9 +94,7 @@ interface NavItem {
       align-items: center;
       padding: 0.75rem 0;
     }
-    .sidebar-top {
-      margin-bottom: 1.5rem;
-    }
+    .sidebar-top { margin-bottom: 1.5rem; }
     .logo {
       display: flex;
       align-items: center;
@@ -135,6 +142,53 @@ interface NavItem {
       gap: 0.25rem;
       margin-top: auto;
     }
+
+    /* ---- Mobile bottom bar ---- */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(3.5rem + var(--safe-bottom, 0px));
+      padding-bottom: var(--safe-bottom, 0px);
+      background: var(--sidebar);
+      border-top: 1px solid var(--sidebar-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      z-index: 50;
+    }
+    .bottom-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.125rem;
+      flex: 1;
+      padding: 0.375rem 0;
+      color: var(--muted-foreground);
+      text-decoration: none;
+      font-size: 0.5625rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .bottom-item.active {
+      color: var(--primary);
+    }
+    .bottom-label {
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    /* ---- Visibility toggles ---- */
+    .desktop-only { display: flex; }
+    .mobile-only { display: none; }
+
+    @media (max-width: 768px) {
+      .desktop-only { display: none !important; }
+      .mobile-only { display: flex !important; }
+    }
   `],
 })
 export class SidebarComponent {
@@ -143,12 +197,12 @@ export class SidebarComponent {
   private readonly isAdmin: Signal<boolean> = toSignal(this.auth.isAdmin$, { initialValue: false });
 
   readonly navItems: readonly NavItem[] = [
-    { path: '/dashboard', icon: 'layout-dashboard', label: 'Dashboard' },
-    { path: '/dev-library', icon: 'code', label: 'Dev Library' },
-    { path: '/cyber-toolbox', icon: 'wrench', label: 'Cyber Toolbox' },
-    { path: '/secure-bridge', icon: 'send', label: 'Secure Bridge' },
+    { path: '/dashboard', icon: 'layout-dashboard', label: 'Dashboard', mobile: true },
+    { path: '/dev-library', icon: 'code', label: 'Library', mobile: true },
+    { path: '/cyber-toolbox', icon: 'wrench', label: 'Toolbox', mobile: true },
+    { path: '/secure-bridge', icon: 'send', label: 'Bridge', mobile: true },
     { path: '/teams', icon: 'users', label: 'Teams', requiresAuth: true },
-    { path: '/it-tools', icon: 'hammer', label: 'IT Tools' },
+    { path: '/it-tools', icon: 'hammer', label: 'Tools', mobile: true },
     { path: '/admin', icon: 'shield', label: 'Admin', requiresAdmin: true },
   ];
 
@@ -158,5 +212,10 @@ export class SidebarComponent {
       if (item.requiresAuth) return this.isAuthenticated();
       return true;
     })
+  );
+
+  /** Mobile bottom bar: only the core 5 items */
+  readonly mobileNavItems = computed(() =>
+    this.visibleNavItems().filter(item => item.mobile).slice(0, 5)
   );
 }

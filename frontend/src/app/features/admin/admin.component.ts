@@ -557,9 +557,30 @@ type AdminTab = 'stats' | 'tags' | 'moderation';
       background: var(--secondary);
       color: var(--muted-foreground);
     }
-    @media (max-width: 720px) {
+    @media (max-width: 768px) {
+      .admin-page { padding: 0.25rem 0 2rem; gap: 0.75rem; }
+      .page-header { gap: 0.5rem; }
+      .page-title { font-size: 1rem; }
+      .page-subtitle { font-size: 0.75rem; }
       .stats-grid { grid-template-columns: 1fr; }
       .stat-card-span { grid-column: auto; }
+      .stat-value { font-size: 1.375rem; }
+      .tab { padding: 0.375rem 0.625rem; font-size: 0.6875rem; }
+      .tags-toolbar { gap: 0.375rem; }
+      .search-box { min-width: 0; }
+      .tag-row {
+        grid-template-columns: 1fr;
+        gap: 0.375rem;
+        padding: 0.625rem 0.75rem;
+      }
+      .tag-row-head { display: none; }
+      .col-count { text-align: left; }
+      .col-flag { justify-content: flex-start; }
+      .col-actions { justify-content: flex-start; }
+      .mod-row { flex-direction: column; align-items: flex-start; gap: 0.375rem; }
+      .mod-row-meta { margin-top: 0.125rem; }
+      .create-tag-row { flex-wrap: wrap; }
+      .dialog { max-width: calc(100vw - 2rem); }
     }
 
     /* Tags toolbar / search */

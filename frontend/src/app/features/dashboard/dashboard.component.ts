@@ -239,6 +239,18 @@ const icons = { Code, Wrench, Send, Hammer, Users, Shield, Clock, ArrowRight, Fi
     @media (max-width: 900px) {
       .content-grid { grid-template-columns: 1fr; }
     }
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+      .stat-card { padding: 1rem; gap: 0.75rem; }
+      .stat-value { font-size: 1.25rem; }
+      .section-card { padding: 1rem; }
+      .quick-grid { grid-template-columns: repeat(3, 1fr); }
+      .quick-btn { padding: 0.75rem 0.375rem; font-size: 0.6875rem; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .quick-grid { grid-template-columns: repeat(2, 1fr); }
+    }
 
     .section-card {
       background: var(--card);

@@ -337,6 +337,16 @@ const icons = { Settings, Sun, Moon, Shield, Bell, User, ExternalLink, Info, Pal
     }
     .about-label { color: var(--muted-foreground); }
     .about-value { color: var(--foreground); }
+
+    @media (max-width: 768px) {
+      .page { padding: 0.5rem 0; }
+      .page-title { font-size: 1.25rem; }
+      .settings-header { padding: 0.75rem 0.875rem; gap: 0.5rem; }
+      .settings-body { padding: 0.75rem 0.875rem; }
+      .setting-row { flex-wrap: wrap; gap: 0.375rem; }
+      .setting-label { flex: 1; min-width: 0; }
+      .about-grid { gap: 0.25rem 0.75rem; }
+    }
   `],
 })
 export class SettingsComponent {

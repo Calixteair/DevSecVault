@@ -453,6 +453,15 @@ type LinkStatus =
     }
     .notice strong { display: block; font-size: 0.75rem; letter-spacing: 0.04em; color: var(--destructive); margin-bottom: 0.25rem; }
     .notice p { margin: 0; font-size: 0.8125rem; color: var(--muted-foreground); }
+
+    @media (max-width: 768px) {
+      .secure-bridge { padding: 1rem 0; gap: 1rem; }
+      .card { padding: 1rem; }
+      .tabs { width: 100%; }
+      .tab-btn { flex: 1; justify-content: center; }
+      .actions { flex-direction: column; }
+      .actions .btn { width: 100%; justify-content: center; }
+    }
   `],
 })
 export class SecureBridgeComponent {
