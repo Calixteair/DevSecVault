@@ -32,6 +32,7 @@ import {
 import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
+import { TagPillComponent } from '../../shared/components/tag-pill/tag-pill.component';
 import { Concept, Snippet } from '../../core/models/concept.model';
 import { TeamSummary } from '../../core/models/team.model';
 
@@ -69,7 +70,7 @@ export interface ConceptEditPayload {
 
 @Component({
   selector: 'app-concept-editor',
-  imports: [FormsModule, LowerCasePipe, LucideAngularModule, MonacoEditorComponent, TagInputComponent],
+  imports: [FormsModule, LowerCasePipe, LucideAngularModule, MonacoEditorComponent, TagInputComponent, TagPillComponent],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -93,6 +94,9 @@ export interface ConceptEditPayload {
               </span>
             }
             <span class="badge-visibility font-mono">{{ concept().visibility }}</span>
+            @for (tag of concept().tags; track tag.id) {
+              <app-tag-pill [name]="tag.name" [isOfficial]="tag.isOfficial" />
+            }
           </div>
         </div>
         <div class="header-actions">

@@ -50,6 +50,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent),
       },
       {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent),
+      },
+      {
         path: 'admin',
         loadComponent: () => import('./features/admin/admin.component').then(m => m.AdminComponent),
         canActivate: [adminGuard],

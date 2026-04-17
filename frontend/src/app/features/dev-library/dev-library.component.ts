@@ -17,6 +17,7 @@ import {
 } from 'lucide-angular';
 import { ConceptSidebarComponent } from './concept-sidebar.component';
 import { ConceptEditorComponent, ConceptEditPayload } from './concept-editor.component';
+import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 import { ConceptService } from '../../core/services/concept.service';
 import { AuthService } from '../../core/services/auth.service';
 import { TeamService } from '../../core/services/team.service';
@@ -39,6 +40,7 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
     LucideAngularModule,
     ConceptSidebarComponent,
     ConceptEditorComponent,
+    TagInputComponent,
   ],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
@@ -171,6 +173,14 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
                   }
                 </div>
               }
+              <div class="form-group">
+                <label class="form-label">Tags</label>
+                <app-tag-input
+                  [tags]="newConceptTags()"
+                  placeholder="Add tags…"
+                  (tagsChange)="newConceptTags.set($event)"
+                />
+              </div>
               <div class="form-group">
                 <label class="form-label">First Snippet — Language</label>
                 <input
@@ -664,6 +674,7 @@ export class DevLibraryComponent implements OnInit {
   newConceptVisibility: 'public' | 'private' | 'team' = 'private';
   /** Chosen team IDs for the create dialog when visibility='team'. */
   newConceptTeamIds = new Set<string>();
+  readonly newConceptTags = signal<string[]>([]);
   newSnippetLanguage = '';
   newSnippetCode = '';
 
@@ -857,6 +868,7 @@ export class DevLibraryComponent implements OnInit {
     this.newConceptDescription = '';
     this.newConceptVisibility = 'private';
     this.newConceptTeamIds = new Set<string>();
+    this.newConceptTags.set([]);
     this.newSnippetLanguage = '';
     this.newSnippetCode = '// Your code here...';
     // Make sure the teams list is fresh when the dialog opens — the user
@@ -885,6 +897,7 @@ export class DevLibraryComponent implements OnInit {
       title: this.newConceptTitle.trim(),
       description: this.newConceptDescription.trim() || undefined,
       visibility: this.newConceptVisibility,
+      tags: this.newConceptTags(),
       snippets: [
         {
           language: this.newSnippetLanguage.trim().toLowerCase(),

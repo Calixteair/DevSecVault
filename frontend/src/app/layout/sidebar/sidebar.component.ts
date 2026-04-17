@@ -62,9 +62,14 @@ interface NavItem {
         >
           <lucide-icon name="settings" [size]="20" [strokeWidth]="2"></lucide-icon>
         </a>
-        <div class="nav-item profile-icon" title="Profile">
+        <a
+          routerLink="/profile"
+          routerLinkActive="active"
+          class="nav-item"
+          title="Profile"
+        >
           <lucide-icon name="user" [size]="20" [strokeWidth]="2"></lucide-icon>
-        </div>
+        </a>
       </div>
     </nav>
   `,
