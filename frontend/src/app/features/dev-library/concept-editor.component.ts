@@ -31,6 +31,7 @@ import {
 } from 'lucide-angular';
 import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 import { Concept, Snippet } from '../../core/models/concept.model';
 import { TeamSummary } from '../../core/models/team.model';
 
@@ -68,7 +69,7 @@ export interface ConceptEditPayload {
 
 @Component({
   selector: 'app-concept-editor',
-  imports: [FormsModule, LowerCasePipe, LucideAngularModule, MonacoEditorComponent],
+  imports: [FormsModule, LowerCasePipe, LucideAngularModule, MonacoEditorComponent, TagInputComponent],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -149,12 +150,11 @@ export interface ConceptEditPayload {
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label font-mono">TAGS (comma-separated)</label>
-              <input
-                class="form-input font-mono"
-                type="text"
-                placeholder="e.g. algorithm, sorting, recursion"
-                [(ngModel)]="editTagsRaw"
+              <label class="form-label font-mono">TAGS</label>
+              <app-tag-input
+                [tags]="editTags()"
+                placeholder="Add tags…"
+                (tagsChange)="editTags.set($event)"
               />
             </div>
             @if (editVisibility === 'team') {
@@ -863,7 +863,7 @@ export class ConceptEditorComponent {
   editTitle = '';
   editDescription = '';
   editVisibility: 'public' | 'private' | 'team' = 'private';
-  editTagsRaw = '';
+  readonly editTags = signal<string[]>([]);
   editTeamIds = new Set<string>();
 
   constructor() {
@@ -975,7 +975,7 @@ export class ConceptEditorComponent {
     this.editTitle = concept.title;
     this.editDescription = concept.description ?? '';
     this.editVisibility = concept.visibility;
-    this.editTagsRaw = concept.tags.map(t => t.name).join(', ');
+    this.editTags.set(concept.tags.map(t => t.name));
     this.editTeamIds = new Set<string>((concept.sharedTeams ?? []).map(t => t.id));
     this.isEditing.set(true);
   }
@@ -1007,10 +1007,7 @@ export class ConceptEditorComponent {
   onSave(): void {
     if (!this.canSaveEdits()) return;
     const snippet = this.currentSnippet();
-    const tags = this.editTagsRaw
-      .split(',')
-      .map(s => s.trim().toLowerCase())
-      .filter(s => s.length > 0);
+    const tags = this.editTags();
 
     const payload: ConceptEditPayload = {
       snippetId: snippet?.id,

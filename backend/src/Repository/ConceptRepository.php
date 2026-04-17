@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Concept;
+use App\Entity\Tag;
 use App\Entity\TeamMember;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -78,6 +79,22 @@ class ConceptRepository extends ServiceEntityRepository
      *
      * @return Concept[]
      */
+    /**
+     * Find every concept that has the given tag attached. Used by the admin
+     * merge flow to rewrite references from a source tag onto a target tag.
+     *
+     * @return Concept[]
+     */
+    public function findByTag(Tag $tag): array
+    {
+        return $this->createQueryBuilder('c')
+            ->innerJoin('c.tags', 't')
+            ->andWhere('t = :tag')
+            ->setParameter('tag', $tag)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function findVisibleToUser(User $user): array
     {
         // Subquery: concept ids shared with any team the user belongs to.

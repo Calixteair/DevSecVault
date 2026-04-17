@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Payload;
+use App\Entity\Tag;
 use App\Entity\TeamMember;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -126,5 +127,21 @@ class PayloadRepository extends ServiceEntityRepository
         }
 
         return $qb->getQuery()->getOneOrNullResult();
+    }
+
+    /**
+     * Find every payload that has the given tag attached. Used by the admin
+     * merge flow to rewrite references from a source tag onto a target tag.
+     *
+     * @return Payload[]
+     */
+    public function findByTag(Tag $tag): array
+    {
+        return $this->createQueryBuilder('p')
+            ->innerJoin('p.tags', 't')
+            ->andWhere('t = :tag')
+            ->setParameter('tag', $tag)
+            ->getQuery()
+            ->getResult();
     }
 }

@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { AsyncPipe, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import {
   LucideAngularModule,
   LUCIDE_ICONS,
@@ -34,6 +35,8 @@ import {
 } from 'lucide-angular';
 import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
+import { TagPillComponent } from '../../shared/components/tag-pill/tag-pill.component';
 import { AuthService } from '../../core/services/auth.service';
 import { PayloadService } from '../../core/services/payload.service';
 import { TeamService } from '../../core/services/team.service';
@@ -90,7 +93,7 @@ const CATEGORIES: CategoryMeta[] = [
 
 @Component({
   selector: 'app-cyber-toolbox',
-  imports: [AsyncPipe, FormsModule, LucideAngularModule, MonacoEditorComponent],
+  imports: [AsyncPipe, FormsModule, LucideAngularModule, MonacoEditorComponent, TagInputComponent, TagPillComponent],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -211,7 +214,7 @@ const CATEGORIES: CategoryMeta[] = [
                     @{{ p.owner.username }}
                   </span>
                   @for (tag of p.tags; track tag.id) {
-                    <span class="pill pill-tag font-mono">#{{ tag.name }}</span>
+                    <app-tag-pill [name]="tag.name" [isOfficial]="!!tag.isOfficial" />
                   }
                 </div>
               </div>
@@ -368,8 +371,12 @@ const CATEGORIES: CategoryMeta[] = [
                   <textarea class="form-textarea" rows="2" [(ngModel)]="editDescription"></textarea>
                 </div>
                 <div class="form-group form-group-span">
-                  <label class="form-label font-mono">TAGS (comma-separated)</label>
-                  <input class="form-input font-mono" type="text" placeholder="e.g. linux, reverse-shell, post-exploit" [(ngModel)]="editTagsRaw" />
+                  <label class="form-label font-mono">TAGS</label>
+                  <app-tag-input
+                    [tags]="editTags()"
+                    placeholder="Add tags…"
+                    (tagsChange)="editTags.set($event)"
+                  />
                 </div>
                 @if (editVisibility === 'team') {
                   <div class="form-group form-group-span">
@@ -545,8 +552,12 @@ const CATEGORIES: CategoryMeta[] = [
                 <input class="form-input font-mono" type="text" placeholder="e.g. bash, python, powershell" [(ngModel)]="newLanguage" />
               </div>
               <div class="form-group">
-                <label class="form-label font-mono">TAGS (comma-separated)</label>
-                <input class="form-input font-mono" type="text" placeholder="e.g. linux, reverse-shell" [(ngModel)]="newTagsRaw" />
+                <label class="form-label font-mono">TAGS</label>
+                <app-tag-input
+                  [tags]="newTags()"
+                  placeholder="Add tags…"
+                  (tagsChange)="newTags.set($event)"
+                />
               </div>
               <div class="form-group">
                 <label class="form-label font-mono">BODY</label>
@@ -934,6 +945,7 @@ export class CyberToolboxComponent implements OnInit {
   readonly teamService = inject(TeamService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly route = inject(ActivatedRoute);
 
   readonly categories = CATEGORIES;
 
@@ -967,7 +979,7 @@ export class CyberToolboxComponent implements OnInit {
   editLanguage = '';
   editCategory: PayloadCategory = 'other';
   editVisibility: PayloadVisibility = 'private';
-  editTagsRaw = '';
+  readonly editTags = signal<string[]>([]);
   /** Selected team ids for the edit form when editVisibility='team'. */
   editTeamIds = new Set<string>();
   private editedBody = '';
@@ -978,7 +990,7 @@ export class CyberToolboxComponent implements OnInit {
   newLanguage = 'bash';
   newCategory: PayloadCategory = 'recon';
   newVisibility: PayloadVisibility = 'private';
-  newTagsRaw = '';
+  readonly newTags = signal<string[]>([]);
   newBody = '';
   /** Selected team ids for the create form when newVisibility='team'. */
   newTeamIds = new Set<string>();
@@ -1110,6 +1122,14 @@ export class CyberToolboxComponent implements OnInit {
       next: (items) => {
         this.payloads.set(items);
         this.loading.set(false);
+        // Deep-link: auto-select payload from ?payload=ID query param
+        const qpId = this.route.snapshot.queryParamMap.get('payload');
+        if (qpId && !this.selected()) {
+          const found = items.find(p => p.id === qpId);
+          if (found) {
+            this.onSelectPayload(found);
+          }
+        }
       },
       error: (err) => {
         console.error('Failed to load payloads', err);
@@ -1173,7 +1193,7 @@ export class CyberToolboxComponent implements OnInit {
     this.editLanguage = p.language ?? '';
     this.editCategory = p.category;
     this.editVisibility = p.visibility;
-    this.editTagsRaw = p.tags.map(t => t.name).join(', ');
+    this.editTags.set(p.tags.map(t => t.name));
     this.editedBody = p.body;
     // Pre-populate the team picker with the payload's current shared teams
     // so the user starts from the existing state, not an empty selection.
@@ -1211,7 +1231,7 @@ export class CyberToolboxComponent implements OnInit {
     const p = this.selected();
     if (!p) return;
     if (!this.canSaveEdits()) return;
-    const tags = this.parseTags(this.editTagsRaw);
+    const tags = this.editTags();
     const update: PayloadUpdateInput = {
       title: this.editTitle.trim() || p.title,
       description: this.editDescription.trim() || null,
@@ -1289,7 +1309,7 @@ export class CyberToolboxComponent implements OnInit {
     this.newLanguage = 'bash';
     this.newCategory = 'recon';
     this.newVisibility = 'private';
-    this.newTagsRaw = '';
+    this.newTags.set([]);
     this.newBody = '';
     this.newTeamIds = new Set<string>();
     this.loadTeams();
@@ -1325,7 +1345,7 @@ export class CyberToolboxComponent implements OnInit {
       language: this.newLanguage.trim() || null,
       visibility: this.newVisibility,
       body: this.newBody,
-      tags: this.parseTags(this.newTagsRaw),
+      tags: this.newTags(),
     };
     if (this.newVisibility === 'team') {
       input.sharedTeamIds = Array.from(this.newTeamIds);
@@ -1376,13 +1396,6 @@ export class CyberToolboxComponent implements OnInit {
       },
       error: () => this.showError('Failed to unshare payload from team.'),
     });
-  }
-
-  private parseTags(raw: string): string[] {
-    return raw
-      .split(',')
-      .map(s => s.trim().toLowerCase())
-      .filter(s => s.length > 0);
   }
 
   private showError(message: string): void {

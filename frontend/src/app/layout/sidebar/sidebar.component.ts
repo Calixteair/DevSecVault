@@ -11,18 +11,20 @@ import {
   Send,
   Hammer,
   Settings,
+  Shield,
   User,
   Users,
 } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 
-const icons = { LayoutDashboard, Code, Wrench, Send, Hammer, Settings, User, Users };
+const icons = { LayoutDashboard, Code, Wrench, Send, Hammer, Settings, Shield, User, Users };
 
 interface NavItem {
   path: string;
   icon: string;
   label: string;
   requiresAuth?: boolean;
+  requiresAdmin?: boolean;
 }
 
 @Component({
@@ -133,6 +135,7 @@ interface NavItem {
 export class SidebarComponent {
   private readonly auth = inject(AuthService);
   private readonly isAuthenticated: Signal<boolean> = toSignal(this.auth.isAuthenticated$, { initialValue: false });
+  private readonly isAdmin: Signal<boolean> = toSignal(this.auth.isAdmin$, { initialValue: false });
 
   readonly navItems: readonly NavItem[] = [
     { path: '/dashboard', icon: 'layout-dashboard', label: 'Dashboard' },
@@ -141,9 +144,14 @@ export class SidebarComponent {
     { path: '/secure-bridge', icon: 'send', label: 'Secure Bridge' },
     { path: '/teams', icon: 'users', label: 'Teams', requiresAuth: true },
     { path: '/it-tools', icon: 'hammer', label: 'IT Tools' },
+    { path: '/admin', icon: 'shield', label: 'Admin', requiresAdmin: true },
   ];
 
   readonly visibleNavItems = computed(() =>
-    this.navItems.filter(item => !item.requiresAuth || this.isAuthenticated())
+    this.navItems.filter(item => {
+      if (item.requiresAdmin) return this.isAdmin();
+      if (item.requiresAuth) return this.isAuthenticated();
+      return true;
+    })
   );
 }

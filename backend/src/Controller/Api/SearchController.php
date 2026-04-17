@@ -9,6 +9,7 @@ use App\Repository\TeamMemberRepository;
 use App\Search\MeilisearchClient;
 use App\Search\PayloadIndexer;
 use App\Search\SnippetIndexer;
+use App\Search\TagIndexer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -86,6 +87,9 @@ final class SearchController extends AbstractController
             PayloadIndexer::INDEX => [
                 'filter' => $filter,
             ],
+            // Tags are a shared taxonomy — no per-user scoping. An empty
+            // rule object grants read access to every document in the index.
+            TagIndexer::INDEX => new \stdClass(),
         ];
     }
 }

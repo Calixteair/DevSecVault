@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit, PLATFORM_ID } from '@angul
 import { isPlatformBrowser } from '@angular/common';
 import { AsyncPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import {
   LucideAngularModule,
   LUCIDE_ICONS,
@@ -644,6 +645,7 @@ export class DevLibraryComponent implements OnInit {
   readonly auth = inject(AuthService);
   readonly teamService = inject(TeamService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly route = inject(ActivatedRoute);
 
   readonly concepts = signal<ConceptListItem[]>([]);
   readonly selectedConcept = signal<Concept | null>(null);
@@ -762,6 +764,14 @@ export class DevLibraryComponent implements OnInit {
       next: (concepts) => {
         this.concepts.set(concepts);
         this.loading.set(false);
+        // Deep-link: auto-select concept from ?concept=ID query param
+        const qpId = this.route.snapshot.queryParamMap.get('concept');
+        if (qpId && !this.selectedConcept()) {
+          const found = concepts.find(c => c.id === qpId);
+          if (found) {
+            this.onSelectConcept({ concept: found, language: found.languages[0] || '' });
+          }
+        }
       },
       error: (err) => {
         console.error('Failed to load concepts', err);

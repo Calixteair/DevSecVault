@@ -36,6 +36,7 @@ import {
   TeamSummary,
 } from '../../core/models/team.model';
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { TagPillComponent } from '../../shared/components/tag-pill/tag-pill.component';
 
 const icons = {
   AlertTriangle,
@@ -64,7 +65,7 @@ type InviteExpiryChoice = 1 | 7 | 30;
 @Component({
   selector: 'app-teams-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule, TagPillComponent],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -435,8 +436,8 @@ type InviteExpiryChoice = 1 | 7 | 30;
                                 <span class="resource-owner muted font-mono">by {{ resourceOwner(c) }}</span>
                                 @if (resourceTags(c).length) {
                                   <div class="resource-tags">
-                                    @for (tag of resourceTags(c); track tag) {
-                                      <span class="tag-pill font-mono">#{{ tag }}</span>
+                                    @for (tag of resourceTags(c); track tag.name) {
+                                      <app-tag-pill [name]="tag.name" [isOfficial]="tag.isOfficial" />
                                     }
                                   </div>
                                 }
@@ -473,8 +474,8 @@ type InviteExpiryChoice = 1 | 7 | 30;
                                 <span class="resource-owner muted font-mono">by {{ resourceOwner(p) }}</span>
                                 @if (resourceTags(p).length) {
                                   <div class="resource-tags">
-                                    @for (tag of resourceTags(p); track tag) {
-                                      <span class="tag-pill font-mono">#{{ tag }}</span>
+                                    @for (tag of resourceTags(p); track tag.name) {
+                                      <app-tag-pill [name]="tag.name" [isOfficial]="tag.isOfficial" />
                                     }
                                   </div>
                                 }
@@ -1344,10 +1345,15 @@ export class TeamsPageComponent implements OnInit {
   resourceOwner(r: TeamSharedResource): string {
     return r.owner?.displayName ?? r.owner?.email ?? r.owner?.username ?? 'unknown';
   }
-  resourceTags(r: TeamSharedResource): string[] {
+  resourceTags(r: TeamSharedResource): Array<{ name: string; isOfficial: boolean }> {
     const tags = r.tags;
     if (!Array.isArray(tags)) return [];
-    return tags.map(t => (typeof t === 'string' ? t : t?.name ?? '')).filter(Boolean);
+    return tags
+      .map(t => {
+        if (typeof t === 'string') return { name: t, isOfficial: false };
+        return { name: t?.name ?? '', isOfficial: !!t?.isOfficial };
+      })
+      .filter(t => t.name);
   }
 
   private describeHttpError(err: HttpErrorResponse): string {

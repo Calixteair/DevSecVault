@@ -50,7 +50,7 @@ export interface TeamSharedResource {
   id: string;
   title: string;
   owner?: { id?: string; username?: string; displayName?: string; email?: string };
-  tags?: Array<string | { name: string }>;
+  tags?: Array<string | { name: string; isOfficial?: boolean }>;
 }
 
 export interface TeamResources {
