@@ -118,7 +118,7 @@ const icons = { Settings, Sun, Moon, Shield, Bell, User, ExternalLink, Info, Pal
                 <a
                   href="https://auth.calixteair.fr/realms/devsecvault/account/"
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   class="link-btn"
                 >
                   <lucide-icon name="external-link" [size]="14" [strokeWidth]="2"></lucide-icon>

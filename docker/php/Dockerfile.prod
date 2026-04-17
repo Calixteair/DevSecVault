@@ -28,7 +28,8 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interactio
 COPY backend/ .
 RUN composer dump-autoload --optimize --no-dev \
     && php bin/console cache:clear --env=prod --no-debug \
-    && chmod -R 777 var/
+    && chown -R www-data:www-data var/ \
+    && chmod -R 775 var/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]

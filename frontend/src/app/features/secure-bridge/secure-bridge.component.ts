@@ -566,9 +566,9 @@ export class SecureBridgeComponent {
         },
         complete: () => this.busy.set(false),
       });
-    } catch (e) {
+    } catch {
       this.busy.set(false);
-      this.vaultStatus.set({ kind: 'error', message: (e as Error).message });
+      this.vaultStatus.set({ kind: 'error', message: 'Encryption failed. Please try again.' });
     }
   }
 
@@ -665,9 +665,9 @@ export class SecureBridgeComponent {
         },
         complete: () => this.busy.set(false),
       });
-    } catch (e) {
+    } catch {
       this.busy.set(false);
-      this.linkStatus.set({ kind: 'error', message: (e as Error).message });
+      this.linkStatus.set({ kind: 'error', message: 'Encryption failed. Please try again.' });
     }
   }
 

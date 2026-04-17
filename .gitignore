@@ -24,6 +24,7 @@ deploy/vps/.env
 backend/vendor/
 backend/var/
 backend/.env.local
+backend/.env.dev
 backend/.env.*.local
 
 # ---- Frontend (Angular / Node) ----

@@ -150,8 +150,9 @@ final class AdminController extends AbstractController
             ->setMaxResults(200);
 
         if ($query !== '') {
+            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], mb_strtolower($query));
             $qb->andWhere(sprintf('LOWER(%s.title) LIKE :q', $alias))
-               ->setParameter('q', '%' . mb_strtolower($query) . '%');
+               ->setParameter('q', '%' . $escaped . '%');
         }
 
         return $qb->getQuery()->getResult();

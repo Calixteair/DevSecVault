@@ -300,6 +300,10 @@ export class SecretViewerComponent implements OnInit {
       // already has the plaintext in memory so a late burn failure is fine.
       this.linkService.consume(this.id).subscribe({ error: () => void 0 });
 
+      // Strip the #key fragment from browser history so the decryption key
+      // is not exposed if the user shares their screen or history is inspected.
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+
       this.state.set({ kind: 'revealed', plaintext });
     } catch {
       this.state.set({ kind: 'decrypt-failed' });

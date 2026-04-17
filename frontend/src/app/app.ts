@@ -27,6 +27,17 @@ export class App implements OnInit {
         if (!result?.isAuthenticated) return;
         const returnUrl = this.auth.consumeReturnUrl();
         if (returnUrl && returnUrl !== window.location.pathname + window.location.search + window.location.hash) {
+          // Validate same-origin to prevent open-redirect attacks.
+          try {
+            const parsed = new URL(returnUrl, window.location.origin);
+            if (parsed.origin !== window.location.origin) {
+              window.location.replace('/');
+              return;
+            }
+          } catch {
+            window.location.replace('/');
+            return;
+          }
           window.location.replace(returnUrl);
         }
       });

@@ -16,6 +16,7 @@ use App\Security\PayloadCipherException;
 use App\Security\Voter\PayloadVoter;
 use App\Service\TeamMembershipService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -46,6 +47,7 @@ final class PayloadController extends AbstractController
         private readonly ValidatorInterface $validator,
         private readonly PayloadCipher $cipher,
         private readonly PayloadIndexer $payloadIndexer,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -129,10 +131,17 @@ final class PayloadController extends AbstractController
         try {
             $payload->setBodyEncrypted($this->cipher->encrypt($body));
         } catch (PayloadCipherException $e) {
-            return $this->json(['error' => 'Encryption failed: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            $this->logger->error('Payload encryption failed during create: {msg}', ['msg' => $e->getMessage(), 'exception' => $e]);
+
+            return $this->json(['error' => 'Failed to process payload.'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
-        $this->syncTags($payload, $data['tags'] ?? []);
+        $tagNames = $data['tags'] ?? [];
+        if (count($tagNames) > 20) {
+            return $this->json(['error' => 'A maximum of 20 tags per resource is allowed.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $this->syncTags($payload, $tagNames);
 
         $teamError = $this->applySharedTeamsOnCreate($payload, $user, $data);
         if ($teamError !== null) {
@@ -186,7 +195,11 @@ final class PayloadController extends AbstractController
             $payload->setVisibility((string) $data['visibility']);
         }
         if (array_key_exists('tags', $data)) {
-            $this->syncTags($payload, (array) $data['tags']);
+            $tags = (array) $data['tags'];
+            if (count($tags) > 20) {
+                return $this->json(['error' => 'A maximum of 20 tags per resource is allowed.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            $this->syncTags($payload, $tags);
         }
 
         $plaintext = null;
@@ -195,7 +208,9 @@ final class PayloadController extends AbstractController
             try {
                 $payload->setBodyEncrypted($this->cipher->encrypt($plaintext));
             } catch (PayloadCipherException $e) {
-                return $this->json(['error' => 'Encryption failed: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+                $this->logger->error('Payload encryption failed during update: {msg}', ['msg' => $e->getMessage(), 'exception' => $e]);
+
+                return $this->json(['error' => 'Failed to process payload.'], Response::HTTP_INTERNAL_SERVER_ERROR);
             }
         }
 
@@ -289,8 +304,13 @@ final class PayloadController extends AbstractController
         try {
             return $this->cipher->decrypt($payload->getBodyEncrypted());
         } catch (PayloadCipherException $e) {
-            // Surface the issue to the client rather than returning ciphertext.
-            throw new \RuntimeException('Unable to decrypt payload body: ' . $e->getMessage(), 0, $e);
+            $this->logger->error('Payload decryption failed for {id}: {msg}', [
+                'id' => (string) $payload->getId(),
+                'msg' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            throw new \RuntimeException('Failed to process payload.', 0, $e);
         }
     }
 

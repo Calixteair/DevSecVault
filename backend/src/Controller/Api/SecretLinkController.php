@@ -63,6 +63,10 @@ final class SecretLinkController extends AbstractController
             return $this->json(['error' => 'ciphertext must be a non-empty base64 string.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        if (strlen($ciphertext) > 1_048_576) {
+            return $this->json(['error' => 'Ciphertext exceeds the maximum allowed size (1 MiB).'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $link = new SecretLink();
         $link->setOwner($user);
         $link->setCiphertext($ciphertext);

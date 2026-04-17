@@ -94,7 +94,11 @@ final class ConceptController extends AbstractController
         $concept->setVisibility($payload['visibility'] ?? 'private');
 
         // Handle tags
-        $this->syncTags($concept, $payload['tags'] ?? []);
+        $tagNames = $payload['tags'] ?? [];
+        if (count($tagNames) > 20) {
+            return $this->json(['error' => 'A maximum of 20 tags per resource is allowed.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $this->syncTags($concept, $tagNames);
 
         // Handle snippets
         $this->syncSnippets($concept, $payload['snippets'] ?? []);
@@ -155,7 +159,11 @@ final class ConceptController extends AbstractController
         }
 
         if (array_key_exists('tags', $payload)) {
-            $this->syncTags($concept, $payload['tags']);
+            $tags = (array) $payload['tags'];
+            if (count($tags) > 20) {
+                return $this->json(['error' => 'A maximum of 20 tags per resource is allowed.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            $this->syncTags($concept, $tags);
         }
 
         if (array_key_exists('snippets', $payload)) {

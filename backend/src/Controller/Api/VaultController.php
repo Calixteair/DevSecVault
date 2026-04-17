@@ -91,6 +91,10 @@ final class VaultController extends AbstractController
             return $this->json(['error' => 'ciphertext and salt must be base64-encoded.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        if (strlen($ciphertext) > 1_048_576) {
+            return $this->json(['error' => 'Ciphertext exceeds the maximum allowed size (1 MiB).'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $entry = $this->vaultRepository->findOneByOwner($user);
         $created = false;
 

@@ -1,0 +1,9 @@
+.git
+.gitignore
+.env*
+!.env
+deploy/
+node_modules/
+vendor/
+*.md
+.claude/
