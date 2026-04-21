@@ -1119,6 +1119,13 @@ export class CyberToolboxComponent implements OnInit {
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadPayloads();
+      this.route.queryParamMap.subscribe(pm => {
+        const qpId = pm.get('payload');
+        if (!qpId) return;
+        if (this.selected()?.id === qpId) return;
+        const found = this.payloads().find(p => p.id === qpId);
+        if (found) this.onSelectPayload(found);
+      });
     }
   }
 

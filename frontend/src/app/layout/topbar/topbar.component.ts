@@ -115,6 +115,28 @@ const icons = { Search, User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Cod
               </div>
             }
 
+            @if (toolResults().length > 0) {
+              <div class="search-group">
+                <div class="search-group-label font-mono">
+                  <lucide-icon name="wrench" [size]="12" [strokeWidth]="2"></lucide-icon>
+                  IT Tools
+                </div>
+                @for (hit of toolResults(); track hit.id; let i = $index) {
+                  <button
+                    class="search-result"
+                    [class.result-active]="activeIndex() === getGlobalIndex('tool', i)"
+                    (click)="navigateToHit(hit)"
+                    (mouseenter)="activeIndex.set(getGlobalIndex('tool', i))"
+                  >
+                    <span class="result-title">{{ hit.title }}</span>
+                    @if (hit.category) {
+                      <span class="result-badge font-mono">{{ hit.category }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            }
+
             @if (tagResults().length > 0) {
               <div class="search-group">
                 <div class="search-group-label font-mono">
@@ -137,6 +159,12 @@ const icons = { Search, User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Cod
                   </button>
                 }
               </div>
+            }
+
+            @if (searchResults().length > 0 && searchQuery()) {
+              <button class="search-see-all font-mono" (click)="goToFullSearch()">
+                See all results for "{{ searchQuery() }}" →
+              </button>
             }
           </div>
         }
@@ -385,6 +413,20 @@ const icons = { Search, User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Cod
       flex-shrink: 0;
     }
     .tag-official { color: var(--accent); }
+    .search-see-all {
+      width: 100%;
+      margin-top: 0.25rem;
+      padding: 0.5rem 0.625rem;
+      border: none;
+      border-top: 1px solid var(--border);
+      background: transparent;
+      color: var(--primary);
+      font-size: 0.75rem;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px);
+    }
+    .search-see-all:hover { background: var(--secondary); }
 
     .topbar-actions {
       display: flex;
@@ -688,18 +730,21 @@ export class TopbarComponent implements OnDestroy {
   // Keyboard navigation in dropdown
   snippetResults(): SearchHit[] { return this.searchResults().filter(h => h.type === 'snippet'); }
   payloadResults(): SearchHit[] { return this.searchResults().filter(h => h.type === 'payload'); }
+  toolResults(): SearchHit[] { return this.searchResults().filter(h => h.type === 'tool'); }
   tagResults(): SearchHit[] { return this.searchResults().filter(h => h.type === 'tag'); }
 
   private flatResults(): SearchHit[] {
-    return [...this.snippetResults(), ...this.payloadResults(), ...this.tagResults()];
+    return [...this.snippetResults(), ...this.payloadResults(), ...this.toolResults(), ...this.tagResults()];
   }
 
   getGlobalIndex(type: string, localIndex: number): number {
-    const snippets = this.snippetResults();
-    const payloads = this.payloadResults();
+    const s = this.snippetResults().length;
+    const p = this.payloadResults().length;
+    const t = this.toolResults().length;
     if (type === 'snippet') return localIndex;
-    if (type === 'payload') return snippets.length + localIndex;
-    return snippets.length + payloads.length + localIndex;
+    if (type === 'payload') return s + localIndex;
+    if (type === 'tool') return s + p + localIndex;
+    return s + p + t + localIndex;
   }
 
   onArrowDown(e: Event): void {
@@ -718,7 +763,16 @@ export class TopbarComponent implements OnDestroy {
     const idx = this.activeIndex();
     if (idx >= 0 && idx < flat.length) {
       this.navigateToHit(flat[idx]);
+      return;
     }
+    this.goToFullSearch();
+  }
+
+  goToFullSearch(): void {
+    const q = this.searchQuery().trim();
+    if (!q) return;
+    this.closeSearch();
+    this.router.navigate(['/search'], { queryParams: { q } });
   }
 
   navigateToHit(hit: SearchHit): void {
@@ -730,9 +784,11 @@ export class TopbarComponent implements OnDestroy {
       case 'payload':
         this.router.navigate(['/cyber-toolbox'], { queryParams: { payload: hit.id } });
         break;
+      case 'tool':
+        this.router.navigate(['/it-tools', hit.id]);
+        break;
       case 'tag':
-        // Navigate to dev-library for now — tags are cross-cutting
-        this.router.navigate(['/dev-library']);
+        this.router.navigate(['/search'], { queryParams: { tag: hit.title } });
         break;
     }
   }

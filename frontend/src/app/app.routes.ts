@@ -38,6 +38,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/teams/teams.routes').then(m => m.teamsRoutes),
       },
       {
+        path: 'search',
+        loadComponent: () => import('./features/search/search-results.component').then(m => m.SearchResultsComponent),
+      },
+      {
         path: 'it-tools',
         loadComponent: () => import('./features/it-tools/it-tools.component').then(m => m.ItToolsComponent),
       },

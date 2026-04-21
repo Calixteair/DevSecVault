@@ -784,6 +784,13 @@ export class DevLibraryComponent implements OnInit {
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadConcepts();
+      this.route.queryParamMap.subscribe(pm => {
+        const qpId = pm.get('concept');
+        if (!qpId) return;
+        if (this.selectedConcept()?.id === qpId) return;
+        const found = this.concepts().find(c => c.id === qpId);
+        if (found) this.onSelectConcept({ concept: found, language: found.languages[0] || '' });
+      });
     }
   }
 
