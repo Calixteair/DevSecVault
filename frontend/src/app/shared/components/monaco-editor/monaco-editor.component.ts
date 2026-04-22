@@ -69,7 +69,8 @@ const LANGUAGE_MAP: Record<string, string> = {
     }
     .editor-container {
       width: 100%;
-      height: 400px;
+      height: var(--monaco-height, 400px);
+      min-height: 200px;
       border-radius: 0 0 var(--radius) var(--radius);
       overflow: hidden;
     }
@@ -209,6 +210,7 @@ export class MonacoEditorComponent implements AfterViewInit, OnDestroy, OnChange
         scrollbar: {
           verticalScrollbarSize: 8,
           horizontalScrollbarSize: 8,
+          alwaysConsumeMouseWheel: false,
         },
         overviewRulerLanes: 0,
         hideCursorInOverviewRuler: true,

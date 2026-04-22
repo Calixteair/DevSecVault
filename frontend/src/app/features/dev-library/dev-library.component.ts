@@ -286,8 +286,9 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
     .main-content {
       flex: 1;
       overflow-y: auto;
-      padding: 1.5rem;
+      padding: 1.5rem 1.5rem 3rem;
       min-width: 0;
+      min-height: 0;
     }
 
     /* Empty State */

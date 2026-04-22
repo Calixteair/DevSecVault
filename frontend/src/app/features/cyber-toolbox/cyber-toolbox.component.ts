@@ -672,8 +672,9 @@ const CATEGORIES: CategoryMeta[] = [
     .item-vis.is-private { background: color-mix(in srgb, var(--destructive) 15%, transparent); color: var(--destructive); }
     .item-vis.is-team { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
     .main-content {
-      flex: 1; overflow-y: auto; padding: 1.5rem;
-      display: flex; flex-direction: column; gap: 1rem; min-width: 0;
+      flex: 1; overflow-y: auto; padding: 1.5rem 1.5rem 3rem;
+      display: flex; flex-direction: column; gap: 1rem;
+      min-width: 0; min-height: 0;
     }
     .header-card {
       background: var(--card); border: 1px solid var(--border);

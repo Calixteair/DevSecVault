@@ -320,7 +320,7 @@ export interface ConceptEditPayload {
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      height: 100%;
+      min-height: 100%;
     }
 
     /* Header */
