@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import {
   LucideAngularModule,
   LUCIDE_ICONS,
@@ -13,15 +14,17 @@ import {
   ExternalLink,
   Info,
   Palette,
+  KeyRound,
+  ChevronRight,
 } from 'lucide-angular';
 import { ThemeService } from '../../core/services/theme.service';
 import { AuthService, UserProfile } from '../../core/services/auth.service';
 
-const icons = { Settings, Sun, Moon, Shield, Bell, User, ExternalLink, Info, Palette };
+const icons = { Settings, Sun, Moon, Shield, Bell, User, ExternalLink, Info, Palette, KeyRound, ChevronRight };
 
 @Component({
   selector: 'app-settings',
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, RouterLink],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -125,6 +128,16 @@ const icons = { Settings, Sun, Moon, Shield, Bell, User, ExternalLink, Info, Pal
                   Account Console
                 </a>
               </div>
+              <a routerLink="/settings/tokens" class="setting-row setting-row-link">
+                <div class="setting-label">
+                  <span class="setting-text">
+                    <lucide-icon name="key-round" [size]="13" [strokeWidth]="2"></lucide-icon>
+                    Personal Access Tokens
+                  </span>
+                  <span class="setting-hint">Authenticate scripts and CLI clients without your browser</span>
+                </div>
+                <lucide-icon name="chevron-right" [size]="16" [strokeWidth]="2"></lucide-icon>
+              </a>
             } @else {
               <p class="setting-note font-mono">Log in to manage security settings.</p>
             }
@@ -239,6 +252,22 @@ const icons = { Settings, Sun, Moon, Shield, Bell, User, ExternalLink, Info, Pal
     }
     .setting-row + .setting-row {
       border-top: 1px solid var(--border);
+    }
+    .setting-row-link {
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: background-color .12s ease;
+      margin: 0 -1.25rem;
+      padding-left: 1.25rem;
+      padding-right: 1.25rem;
+    }
+    .setting-row-link:hover { background: var(--secondary); }
+    .setting-row-link .setting-text {
+      display: inline-flex;
+      align-items: center;
+      gap: .375rem;
+      color: var(--primary);
     }
     .setting-label { }
     .setting-text {

@@ -54,6 +54,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent),
       },
       {
+        path: 'settings/tokens',
+        loadComponent: () => import('./features/settings/api-tokens.component').then(m => m.ApiTokensComponent),
+      },
+      {
         path: 'profile',
         loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent),
       },

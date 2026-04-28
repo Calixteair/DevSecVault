@@ -1,0 +1,8 @@
+framework:
+    rate_limiter:
+        # PAT-authenticated requests: 60 calls per minute per token (rolling window).
+        # Storage: cache.app (filesystem by default — fine for single-instance VPS).
+        api_token:
+            policy: 'sliding_window'
+            limit: 60
+            interval: '1 minute'
