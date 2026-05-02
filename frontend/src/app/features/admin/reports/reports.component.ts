@@ -212,7 +212,7 @@ interface ResolutionDraft {
                       class="btn btn-danger-strong"
                       (click)="resolve(r, 'ban_user')"
                       [disabled]="busyId() === r.id || !r.reporter"
-                      [title]="r.reporter ? 'Bannir le compte signalé' : 'Pas d\\'utilisateur à bannir (signalement anonyme)'"
+                      [title]="banButtonTitle(r)"
                     >
                       <lucide-icon name="ban" [size]="14" [strokeWidth]="2"></lucide-icon>
                       Bannir
@@ -608,6 +608,12 @@ export class AdminReportsComponent implements OnInit {
 
   statusLabel(status: ReportStatus): string {
     return STATUS_LABELS[status] ?? status;
+  }
+
+  banButtonTitle(r: AdminReport): string {
+    return r.reporter
+      ? 'Bannir le compte signalé'
+      : "Pas d'utilisateur à bannir (signalement anonyme)";
   }
 
   formatDate(iso: string): string {
