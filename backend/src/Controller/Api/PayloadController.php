@@ -71,7 +71,17 @@ final class PayloadController extends AbstractController
             $payloads = $this->payloadRepository->findPublicPayloads();
         }
 
-        $data = $this->serializer->normalize($payloads, 'json', ['groups' => ['payload:list']]);
+        $isAdmin = $this->isGranted('ROLE_ADMIN');
+        // Lot 4 — moderation gate. Owners keep visibility on flagged/hidden
+        // (transparency) but `removed` is admin-only. Guests only see active.
+        $payloads = $this->filterByModeration($payloads, $user, $isAdmin);
+
+        $groups = ['payload:list'];
+        if ($isAdmin) {
+            $groups[] = 'payload:admin';
+        }
+
+        $data = $this->serializer->normalize($payloads, 'json', ['groups' => $groups]);
 
         return $this->json($data);
     }
@@ -95,7 +105,12 @@ final class PayloadController extends AbstractController
 
         $this->denyAccessUnlessGranted(PayloadVoter::VIEW, $payload);
 
-        $data = $this->serializer->normalize($payload, 'json', ['groups' => ['payload:read']]);
+        $groups = ['payload:read'];
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $groups[] = 'payload:admin';
+        }
+
+        $data = $this->serializer->normalize($payload, 'json', ['groups' => $groups]);
         $data['body'] = $this->decryptBody($payload);
 
         return $this->json($data);
@@ -294,6 +309,37 @@ final class PayloadController extends AbstractController
     // -----------------------------------------------------------------------
     // Private helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Lot 4 — strip payloads the caller is not allowed to see based on the
+     * `moderation_status` lifecycle. Owners keep visibility on flagged/hidden;
+     * `removed` is admin-only.
+     *
+     * @param Payload[] $payloads
+     * @return Payload[]
+     */
+    private function filterByModeration(array $payloads, ?object $user, bool $isAdmin): array
+    {
+        if ($isAdmin) {
+            return $payloads;
+        }
+
+        $userId = $user instanceof User ? $user->getId() : null;
+
+        return array_values(array_filter(
+            $payloads,
+            static function (Payload $p) use ($userId): bool {
+                $status = $p->getModerationStatus();
+                if ($status === 'active') {
+                    return true;
+                }
+                if ($status === 'removed' || $userId === null) {
+                    return false;
+                }
+                return $p->getOwner()->getId()?->equals($userId) ?? false;
+            },
+        ));
+    }
 
     private function decryptBody(Payload $payload): string
     {

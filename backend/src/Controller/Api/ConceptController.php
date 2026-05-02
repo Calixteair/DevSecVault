@@ -53,7 +53,17 @@ final class ConceptController extends AbstractController
             $concepts = $this->conceptRepository->findPublicConcepts();
         }
 
-        $data = $this->serializer->normalize($concepts, 'json', ['groups' => ['concept:list']]);
+        $isAdmin = $this->isGranted('ROLE_ADMIN');
+        // Lot 4 — filter out content the caller is not allowed to view
+        // (moderation gate). Admins see everything for moderation.
+        $concepts = $this->filterByModeration($concepts, $user, $isAdmin);
+
+        $groups = ['concept:list'];
+        if ($isAdmin) {
+            $groups[] = 'concept:admin';
+        }
+
+        $data = $this->serializer->normalize($concepts, 'json', ['groups' => $groups]);
 
         return $this->json($data);
     }
@@ -66,7 +76,13 @@ final class ConceptController extends AbstractController
     {
         $this->denyAccessUnlessGranted(ConceptVoter::VIEW, $concept);
 
-        $data = $this->serializer->normalize($concept, 'json', ['groups' => ['concept:read']]);
+        $groups = ['concept:read'];
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $groups[] = 'concept:admin';
+            $groups[] = 'snippet:admin';
+        }
+
+        $data = $this->serializer->normalize($concept, 'json', ['groups' => $groups]);
 
         return $this->json($data);
     }
@@ -261,6 +277,38 @@ final class ConceptController extends AbstractController
     // -----------------------------------------------------------------------
     // Private helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Lot 4 — strip concepts the caller is not allowed to see based on the
+     * `moderation_status` lifecycle. Owners keep visibility on flagged/hidden
+     * (transparency) but `removed` is admin-only. Anonymous visitors only see
+     * `active`.
+     *
+     * @param Concept[] $concepts
+     * @return Concept[]
+     */
+    private function filterByModeration(array $concepts, ?object $user, bool $isAdmin): array
+    {
+        if ($isAdmin) {
+            return $concepts;
+        }
+
+        $userId = $user instanceof User ? $user->getId() : null;
+
+        return array_values(array_filter(
+            $concepts,
+            static function (Concept $c) use ($userId): bool {
+                $status = $c->getModerationStatus();
+                if ($status === 'active') {
+                    return true;
+                }
+                if ($status === 'removed' || $userId === null) {
+                    return false;
+                }
+                return $c->getOwner()->getId()?->equals($userId) ?? false;
+            },
+        ));
+    }
 
     /**
      * Decode JSON body. Returns the parsed array or a JsonResponse on error.
