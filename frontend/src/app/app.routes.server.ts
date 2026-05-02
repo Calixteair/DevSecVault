@@ -14,6 +14,7 @@ export const serverRoutes: ServerRoute[] = [
   { path: 'teams', renderMode: RenderMode.Client },
   { path: 'teams/**', renderMode: RenderMode.Client },
   { path: 'admin', renderMode: RenderMode.Client },
+  { path: 'admin/reports', renderMode: RenderMode.Client },
   { path: 'settings', renderMode: RenderMode.Client },
   { path: 'profile', renderMode: RenderMode.Client },
   { path: 'invite/:token', renderMode: RenderMode.Client },

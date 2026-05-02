@@ -12,6 +12,7 @@ import {
   Check,
   Code2,
   FileCode,
+  Flag,
   GitMerge,
   Hash,
   Search,
@@ -37,6 +38,7 @@ const icons = {
   Check,
   Code2,
   FileCode,
+  Flag,
   GitMerge,
   Hash,
   Plus,
@@ -111,6 +113,10 @@ type AdminTab = 'stats' | 'tags' | 'moderation';
           <lucide-icon name="shield-check" [size]="14" [strokeWidth]="2"></lucide-icon>
           Moderation
         </button>
+        <a routerLink="/admin/reports" class="tab tab-link">
+          <lucide-icon name="flag" [size]="14" [strokeWidth]="2"></lucide-icon>
+          Reports
+        </a>
       </nav>
 
       @if (errorMessage()) {
@@ -488,6 +494,7 @@ type AdminTab = 'stats' | 'tags' | 'moderation';
     }
     .tab:hover { color: var(--foreground); }
     .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-link { text-decoration: none; }
 
     /* Notice */
     .notice {
