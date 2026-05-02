@@ -12,6 +12,25 @@ export const routes: Routes = [
     path: 'invite/:token',
     loadComponent: () => import('./features/teams/invite-landing.component').then(m => m.InviteLandingComponent),
   },
+  // Legal pages — public, accessible to guests, rendered outside the main
+  // layout (no sidebar/topbar) so they stay reachable from the login page,
+  // the secret viewer and the invite landing alike.
+  {
+    path: 'legal/terms',
+    loadComponent: () => import('./features/legal/terms.component').then(m => m.LegalTermsComponent),
+  },
+  {
+    path: 'legal/privacy',
+    loadComponent: () => import('./features/legal/privacy.component').then(m => m.LegalPrivacyComponent),
+  },
+  {
+    path: 'legal/notice',
+    loadComponent: () => import('./features/legal/notice.component').then(m => m.LegalNoticeComponent),
+  },
+  {
+    path: 'legal/abuse',
+    loadComponent: () => import('./features/legal/abuse.component').then(m => m.LegalAbuseComponent),
+  },
   {
     path: '',
     loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),
