@@ -25,11 +25,14 @@ import {
   Users,
   X,
   Plus,
+  ShieldOff,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-angular';
 import { AdminService } from '../../core/services/admin.service';
 import { TagService } from '../../core/services/tag.service';
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
-import { AdminPublicContent, AdminStats } from '../../core/models/admin.model';
+import { AdminPublicContent, AdminStats, AdminUser } from '../../core/models/admin.model';
 import { AdminTag } from '../../core/models/tag.model';
 
 const icons = {
@@ -50,10 +53,13 @@ const icons = {
   Terminal,
   Trash2,
   Users,
+  ShieldOff,
+  ChevronLeft,
+  ChevronRight,
   X,
 };
 
-type AdminTab = 'stats' | 'tags' | 'moderation';
+type AdminTab = 'stats' | 'tags' | 'moderation' | 'users';
 
 /**
  * Admin dashboard with 3 tabs:
@@ -112,6 +118,15 @@ type AdminTab = 'stats' | 'tags' | 'moderation';
         >
           <lucide-icon name="shield-check" [size]="14" [strokeWidth]="2"></lucide-icon>
           Moderation
+        </button>
+        <button
+          type="button"
+          class="tab"
+          [class.active]="activeTab() === 'users'"
+          (click)="setTab('users')"
+        >
+          <lucide-icon name="users" [size]="14" [strokeWidth]="2"></lucide-icon>
+          Users
         </button>
         <a routerLink="/admin/reports" class="tab tab-link">
           <lucide-icon name="flag" [size]="14" [strokeWidth]="2"></lucide-icon>
@@ -435,6 +450,113 @@ type AdminTab = 'stats' | 'tags' | 'moderation';
           </section>
         }
       }
+
+      <!-- USERS TAB ----------------------------------------------------- -->
+      @if (activeTab() === 'users') {
+        <div class="tags-toolbar">
+          <div class="search-box">
+            <lucide-icon name="search" [size]="14" [strokeWidth]="2"></lucide-icon>
+            <input
+              type="text"
+              class="search-input font-mono"
+              placeholder="Search by username or email…"
+              [(ngModel)]="userQuery"
+              (keydown.enter)="loadUsers(1)"
+            />
+          </div>
+          <button class="btn btn-outline" (click)="loadUsers(1)">Search</button>
+          @if (userPage(); as p) {
+            <span class="muted font-mono">
+              {{ p.items.length }} of {{ p.total }} users
+            </span>
+          }
+        </div>
+
+        @if (loading() && !userPage()) {
+          <p class="muted">Loading users…</p>
+        } @else if (userPage(); as p) {
+          <div class="tag-table card">
+            <div class="user-row user-row-head font-mono">
+              <div class="col-user">USER</div>
+              <div class="col-email">EMAIL</div>
+              <div class="col-role">ROLE</div>
+              <div class="col-teams">TEAMS</div>
+              <div class="col-status">STATUS</div>
+              <div class="col-actions">ACTIONS</div>
+            </div>
+            @for (u of p.items; track u.id) {
+              <div class="user-row" [class.user-row-banned]="u.disabled">
+                <div class="col-user">
+                  <span class="font-mono">{{ u.username }}</span>
+                </div>
+                <div class="col-email muted">{{ u.email }}</div>
+                <div class="col-role">
+                  <span class="chip font-mono" [class.chip-admin]="u.role === 'ROLE_ADMIN'">
+                    {{ u.role === 'ROLE_ADMIN' ? 'admin' : 'user' }}
+                  </span>
+                </div>
+                <div class="col-teams font-mono">{{ u.teamCount }}</div>
+                <div class="col-status">
+                  @if (u.disabled) {
+                    <span class="chip chip-banned font-mono">banned</span>
+                  } @else {
+                    <span class="chip chip-active font-mono">active</span>
+                  }
+                </div>
+                <div class="col-actions">
+                  @if (u.disabled) {
+                    <button
+                      type="button"
+                      class="btn btn-xs btn-outline"
+                      (click)="toggleBan(u)"
+                      title="Restore access"
+                    >
+                      <lucide-icon name="shield-check" [size]="12" [strokeWidth]="2"></lucide-icon>
+                      Unban
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn btn-xs btn-danger"
+                      (click)="toggleBan(u)"
+                      title="Ban this user (blocks API access)"
+                    >
+                      <lucide-icon name="shield-off" [size]="12" [strokeWidth]="2"></lucide-icon>
+                      Ban
+                    </button>
+                  }
+                </div>
+              </div>
+            } @empty {
+              <div class="tag-row tag-row-empty muted">No user matches the search.</div>
+            }
+          </div>
+
+          @if (p.total > p.pageSize) {
+            <div class="pagination">
+              <button
+                type="button"
+                class="btn btn-xs btn-ghost"
+                [disabled]="p.page === 1 || loading()"
+                (click)="loadUsers(p.page - 1)"
+              >
+                <lucide-icon name="chevron-left" [size]="12" [strokeWidth]="2"></lucide-icon>
+                Prev
+              </button>
+              <span class="muted font-mono">page {{ p.page }} / {{ totalPages() }}</span>
+              <button
+                type="button"
+                class="btn btn-xs btn-ghost"
+                [disabled]="p.page >= totalPages() || loading()"
+                (click)="loadUsers(p.page + 1)"
+              >
+                Next
+                <lucide-icon name="chevron-right" [size]="12" [strokeWidth]="2"></lucide-icon>
+              </button>
+            </div>
+          }
+        }
+      }
     </div>
   `,
   styles: [`
@@ -564,6 +686,54 @@ type AdminTab = 'stats' | 'tags' | 'moderation';
       background: var(--secondary);
       color: var(--muted-foreground);
     }
+    .chip-admin {
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+    }
+    .chip-active {
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+      color: var(--primary);
+    }
+    .chip-banned {
+      background: color-mix(in srgb, var(--destructive) 14%, transparent);
+      color: var(--destructive);
+      border-color: color-mix(in srgb, var(--destructive) 32%, transparent);
+    }
+
+    /* User table */
+    .user-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.2fr) minmax(160px, 1.6fr) 0.5fr 0.4fr 0.5fr auto;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .user-row:last-child { border-bottom: none; }
+    .user-row-head {
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      color: var(--muted-foreground);
+      background: var(--secondary);
+    }
+    .user-row-banned { opacity: 0.65; }
+    .user-row .col-email {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .user-row .col-actions { display: flex; gap: 0.25rem; justify-content: flex-end; }
+    .pagination {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    @media (max-width: 768px) {
+      .user-row { grid-template-columns: 1fr 1fr; gap: 0.25rem; row-gap: 0.25rem; }
+      .user-row-head { display: none; }
+      .user-row .col-email { grid-column: span 2; font-size: 0.75rem; }
+      .user-row .col-actions { grid-column: span 2; justify-content: flex-start; }
+    }
+
     @media (max-width: 768px) {
       .admin-page { padding: 0.25rem 0 2rem; gap: 0.75rem; }
       .page-header { gap: 0.5rem; }
@@ -889,6 +1059,15 @@ export class AdminComponent implements OnInit {
   readonly moderation = signal<AdminPublicContent | null>(null);
   moderationQuery = '';
 
+  // Users
+  readonly userPage = signal<{ items: AdminUser[]; total: number; page: number; pageSize: number } | null>(null);
+  userQuery = '';
+  readonly totalPages = computed(() => {
+    const p = this.userPage();
+    if (!p) return 1;
+    return Math.max(1, Math.ceil(p.total / p.pageSize));
+  });
+
   ngOnInit(): void {
     this.loadStats();
   }
@@ -899,6 +1078,7 @@ export class AdminComponent implements OnInit {
     if (tab === 'stats' && !this.stats()) this.loadStats();
     if (tab === 'tags' && this.allTags().length === 0) this.loadTags();
     if (tab === 'moderation' && !this.moderation()) this.loadModeration();
+    if (tab === 'users' && !this.userPage()) this.loadUsers(1);
   }
 
   // ---- Stats -------------------------------------------------------------
@@ -1069,6 +1249,56 @@ export class AdminComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
         this.showError('Failed to load moderation list', err);
+      },
+    });
+  }
+
+  // ---- Users -------------------------------------------------------------
+
+  loadUsers(page: number): void {
+    this.loading.set(true);
+    this.adminService.listUsers(this.userQuery, page).subscribe({
+      next: data => {
+        this.userPage.set(data);
+        this.loading.set(false);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.loading.set(false);
+        this.showError('Failed to load users', err);
+      },
+    });
+  }
+
+  async toggleBan(u: AdminUser): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    if (!u.disabled) {
+      const ok = await this.confirmDialog.confirm({
+        title: `Ban "${u.username}"?`,
+        message:
+          'They will be denied API access immediately. Existing sessions become unusable; ' +
+          'their content stays in place. To fully evict the account, also disable it in Keycloak.',
+        confirmLabel: 'Ban',
+        cancelLabel: 'Cancel',
+        variant: 'destructive',
+      });
+      if (!ok) return;
+    }
+
+    const op = u.disabled
+      ? this.adminService.unbanUser(u.id)
+      : this.adminService.banUser(u.id);
+
+    op.subscribe({
+      next: updated => {
+        this.userPage.update(p => {
+          if (!p) return p;
+          return { ...p, items: p.items.map(x => (x.id === updated.id ? updated : x)) };
+        });
+      },
+      error: (err: HttpErrorResponse) => {
+        const msg = err.status === 403 ? 'You cannot ban yourself.' : 'Action failed';
+        this.showError(msg, err);
       },
     });
   }
