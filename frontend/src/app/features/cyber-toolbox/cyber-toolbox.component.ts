@@ -20,6 +20,7 @@ import {
   Copy,
   Edit3,
   FileCode,
+  Flag,
   Folder,
   Lock,
   Plus,
@@ -35,6 +36,7 @@ import {
 } from 'lucide-angular';
 import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ReportDialogComponent } from '../../shared/components/report-dialog/report-dialog.component';
 import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 import { TagPillComponent } from '../../shared/components/tag-pill/tag-pill.component';
 import { AuthService } from '../../core/services/auth.service';
@@ -58,6 +60,7 @@ const icons = {
   Copy,
   Edit3,
   FileCode,
+  Flag,
   Folder,
   Lock,
   Plus,
@@ -93,7 +96,7 @@ const CATEGORIES: CategoryMeta[] = [
 
 @Component({
   selector: 'app-cyber-toolbox',
-  imports: [AsyncPipe, FormsModule, LucideAngularModule, MonacoEditorComponent, TagInputComponent, TagPillComponent],
+  imports: [AsyncPipe, FormsModule, LucideAngularModule, MonacoEditorComponent, ReportDialogComponent, TagInputComponent, TagPillComponent],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -236,6 +239,16 @@ const CATEGORIES: CategoryMeta[] = [
                       Delete
                     </button>
                   }
+                } @else if (p.visibility === 'public') {
+                  <button
+                    class="btn btn-report"
+                    type="button"
+                    (click)="openReportDialog()"
+                    title="Signaler ce payload"
+                  >
+                    <lucide-icon name="flag" [size]="14" [strokeWidth]="2"></lucide-icon>
+                    Signaler
+                  </button>
                 }
                 <button class="btn btn-primary" (click)="copyBody()" [disabled]="copySuccess()">
                   @if (copySuccess()) {
@@ -589,6 +602,14 @@ const CATEGORIES: CategoryMeta[] = [
           </button>
         </div>
       }
+
+      @if (showReportDialog() && selected()) {
+        <app-report-dialog
+          targetType="payload"
+          [targetId]="selected()!.id"
+          (closed)="showReportDialog.set(false)"
+        />
+      }
     </div>
   `,
   styles: [`
@@ -716,6 +737,12 @@ const CATEGORIES: CategoryMeta[] = [
     .btn-ghost:hover { background: var(--secondary); color: var(--foreground); }
     .btn-danger { background: transparent; color: var(--destructive); border: 1px solid var(--destructive); }
     .btn-danger:hover { background: var(--destructive); color: var(--destructive-foreground); }
+    .btn-report { background: transparent; color: var(--muted-foreground); border: 1px solid var(--border); }
+    .btn-report:hover {
+      background: color-mix(in srgb, var(--destructive) 10%, transparent);
+      color: var(--destructive);
+      border-color: color-mix(in srgb, var(--destructive) 35%, transparent);
+    }
     .editor-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .editor-toolbar {
       display: flex; align-items: center; justify-content: space-between;
@@ -971,6 +998,7 @@ export class CyberToolboxComponent implements OnInit {
 
   readonly isEditing = signal(false);
   readonly copySuccess = signal(false);
+  readonly showReportDialog = signal(false);
   readonly showCreateDialog = signal(false);
 
   /**
@@ -1289,6 +1317,10 @@ export class CyberToolboxComponent implements OnInit {
       },
       error: () => this.showError('Failed to delete payload.'),
     });
+  }
+
+  openReportDialog(): void {
+    this.showReportDialog.set(true);
   }
 
   async copyBody(): Promise<void> {
