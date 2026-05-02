@@ -81,6 +81,24 @@ final class ConceptVoter extends Voter
 
     private function canView(Concept $concept, mixed $user): bool
     {
+        // Lot 4 — moderation gate: anything not `active` is hidden from the
+        // crowd. Owner can still see `flagged` / `hidden` (transparency on
+        // their own content); admin can see everything to moderate.
+        // `removed` is invisible even to the owner — only admins for evidence.
+        $moderation = $concept->getModerationStatus();
+        if ($moderation !== 'active') {
+            if (!$user instanceof User) {
+                return false;
+            }
+            if ($this->isAdmin($user)) {
+                return true;
+            }
+            if ($moderation === 'removed') {
+                return false;
+            }
+            return $this->isOwner($concept, $user);
+        }
+
         // Public concepts are visible to everyone (including guests)
         if ($concept->getVisibility() === 'public') {
             return true;

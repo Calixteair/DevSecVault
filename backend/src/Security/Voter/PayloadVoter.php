@@ -80,6 +80,23 @@ final class PayloadVoter extends Voter
 
     private function canView(Payload $payload, mixed $user): bool
     {
+        // Lot 4 — moderation gate: anything not `active` is hidden from the
+        // crowd. Owner keeps visibility for `flagged` / `hidden` so they
+        // know their content is under review; `removed` is admin-only.
+        $moderation = $payload->getModerationStatus();
+        if ($moderation !== 'active') {
+            if (!$user instanceof User) {
+                return false;
+            }
+            if ($this->isAdmin($user)) {
+                return true;
+            }
+            if ($moderation === 'removed') {
+                return false;
+            }
+            return $this->isOwner($payload, $user);
+        }
+
         // Public payloads are visible to everyone (including guests)
         if ($payload->getVisibility() === 'public') {
             return true;

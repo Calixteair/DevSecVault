@@ -42,6 +42,15 @@ class User implements UserInterface
     #[ORM\Column(type: Types::STRING, length: 50)]
     private string $role = 'ROLE_USER';
 
+    /**
+     * Lot 4 — admin-controlled local kill switch. When true, the user is
+     * blocked at the firewall (no API access). The Keycloak account itself
+     * must also be disabled via the Keycloak admin UI for full lockout —
+     * see ReportController::resolve() for the TODO on the admin API call.
+     */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $disabled = false;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -125,6 +134,18 @@ class User implements UserInterface
     public function setRole(string $role): static
     {
         $this->role = $role;
+
+        return $this;
+    }
+
+    public function isDisabled(): bool
+    {
+        return $this->disabled;
+    }
+
+    public function setDisabled(bool $disabled): static
+    {
+        $this->disabled = $disabled;
 
         return $this;
     }
