@@ -31,6 +31,10 @@ security:
         - { path: ^/api/concepts, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/payloads, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/search/token, roles: PUBLIC_ACCESS, methods: [GET] }
+        # Lot 4 — moderation reports: guests can submit. Rate-limited at the
+        # controller level (`report_submit` factory, 5/h per IP). Listing /
+        # resolution lives under /api/admin and stays ROLE_ADMIN.
+        - { path: ^/api/reports$, roles: PUBLIC_ACCESS, methods: [POST] }
         # Phase 7 — Admin-only endpoints (tags admin CRUD, stats, moderation listings)
         - { path: ^/api/admin, roles: ROLE_ADMIN }
         - { path: ^/api, roles: ROLE_USER }

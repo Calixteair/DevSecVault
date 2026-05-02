@@ -6,3 +6,10 @@ framework:
             policy: 'sliding_window'
             limit: 60
             interval: '1 minute'
+
+        # Lot 4 — moderation report submissions: 5 per hour per IP.
+        # Keyed on the client IP (hashed only at storage time, never logged).
+        report_submit:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 hour'
