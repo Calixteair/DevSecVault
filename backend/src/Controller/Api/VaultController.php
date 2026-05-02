@@ -8,6 +8,8 @@ use App\Entity\User;
 use App\Entity\VaultEntry;
 use App\Repository\VaultEntryRepository;
 use App\Security\Voter\VaultEntryVoter;
+use App\Service\QuotaExceededException;
+use App\Service\UserQuota;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -37,6 +39,7 @@ final class VaultController extends AbstractController
         private readonly VaultEntryRepository $vaultRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly SerializerInterface $serializer,
+        private readonly UserQuota $userQuota,
         #[Autowire(service: 'limiter.vault_create')]
         private readonly RateLimiterFactory $vaultCreateLimiter,
     ) {
@@ -114,6 +117,15 @@ final class VaultController extends AbstractController
         $created = false;
 
         if ($entry === null) {
+            try {
+                $this->userQuota->ensureCanCreateVaultItem($user);
+            } catch (QuotaExceededException $e) {
+                return $this->json(
+                    ['error' => 'Quota atteint', 'quota' => $e->getQuota(), 'limit' => $e->getLimit()],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+
             $entry = new VaultEntry();
             $entry->setOwner($user);
             $created = true;

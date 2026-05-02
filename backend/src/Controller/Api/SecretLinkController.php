@@ -8,6 +8,8 @@ use App\Entity\SecretLink;
 use App\Entity\User;
 use App\Repository\SecretLinkRepository;
 use App\Security\Voter\SecretLinkVoter;
+use App\Service\QuotaExceededException;
+use App\Service\UserQuota;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -38,6 +40,7 @@ final class SecretLinkController extends AbstractController
         private readonly SecretLinkRepository $secretLinkRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly SerializerInterface $serializer,
+        private readonly UserQuota $userQuota,
         #[Autowire(service: 'limiter.secret_link_create')]
         private readonly RateLimiterFactory $secretLinkCreateLimiter,
         #[Autowire(service: 'limiter.secret_link_create_guest')]
@@ -93,6 +96,15 @@ final class SecretLinkController extends AbstractController
 
         if (strlen($ciphertext) > 1_048_576) {
             return $this->json(['error' => 'Ciphertext exceeds the maximum allowed size (1 MiB).'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            $this->userQuota->ensureCanCreateSecretLink($user);
+        } catch (QuotaExceededException $e) {
+            return $this->json(
+                ['error' => 'Quota atteint', 'quota' => $e->getQuota(), 'limit' => $e->getLimit()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
         }
 
         $link = new SecretLink();

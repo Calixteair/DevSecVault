@@ -14,7 +14,9 @@ use App\Search\PayloadIndexer;
 use App\Security\PayloadCipher;
 use App\Security\PayloadCipherException;
 use App\Security\Voter\PayloadVoter;
+use App\Service\QuotaExceededException;
 use App\Service\TeamMembershipService;
+use App\Service\UserQuota;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -48,6 +50,7 @@ final class PayloadController extends AbstractController
         private readonly PayloadCipher $cipher,
         private readonly PayloadIndexer $payloadIndexer,
         private readonly LoggerInterface $logger,
+        private readonly UserQuota $userQuota,
     ) {
     }
 
@@ -113,6 +116,15 @@ final class PayloadController extends AbstractController
 
         /** @var User $user */
         $user = $this->getUser();
+
+        try {
+            $this->userQuota->ensureCanCreatePayload($user);
+        } catch (QuotaExceededException $e) {
+            return $this->json(
+                ['error' => 'Quota atteint', 'quota' => $e->getQuota(), 'limit' => $e->getLimit()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
 
         $data = $this->decodeJson($request);
         if ($data instanceof JsonResponse) {

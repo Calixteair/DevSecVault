@@ -7,6 +7,8 @@ namespace App\Controller\Api;
 use App\Entity\Concept;
 use App\Entity\Snippet;
 use App\Security\Voter\ConceptVoter;
+use App\Service\QuotaExceededException;
+use App\Service\UserQuota;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,6 +24,7 @@ final class SnippetController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly SerializerInterface $serializer,
         private readonly ValidatorInterface $validator,
+        private readonly UserQuota $userQuota,
     ) {
     }
 
@@ -32,6 +35,15 @@ final class SnippetController extends AbstractController
     public function create(Request $request, Concept $concept): JsonResponse
     {
         $this->denyAccessUnlessGranted(ConceptVoter::EDIT, $concept);
+
+        try {
+            $this->userQuota->ensureCanCreateSnippet($concept);
+        } catch (QuotaExceededException $e) {
+            return $this->json(
+                ['error' => 'Quota atteint', 'quota' => $e->getQuota(), 'limit' => $e->getLimit()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
 
         $payload = $this->decodeJson($request);
         if ($payload instanceof JsonResponse) {
