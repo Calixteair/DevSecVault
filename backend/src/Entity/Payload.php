@@ -61,6 +61,10 @@ class Payload
      * response time by the controller as a virtual `body` field (payload:read).
      */
     #[ORM\Column(type: Types::TEXT, name: 'body_encrypted')]
+    #[Assert\Length(
+        max: 1_000_000,
+        maxMessage: 'Le contenu dépasse la taille maximale autorisée.'
+    )]
     private string $bodyEncrypted = '';
 
     #[ORM\ManyToOne(targetEntity: User::class)]

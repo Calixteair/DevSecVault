@@ -10,6 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Secure Bridge — personal vault (single slot per user, E2E encrypted).
@@ -48,6 +49,10 @@ class VaultEntry
      * client using a key derived from the user's passphrase.
      */
     #[ORM\Column(type: Types::TEXT)]
+    #[Assert\Length(
+        max: 1_000_000,
+        maxMessage: 'Le contenu dépasse la taille maximale autorisée.'
+    )]
     #[Groups(['vault:read'])]
     private string $ciphertext = '';
 
