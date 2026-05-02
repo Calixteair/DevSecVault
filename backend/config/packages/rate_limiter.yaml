@@ -6,3 +6,40 @@ framework:
             policy: 'sliding_window'
             limit: 60
             interval: '1 minute'
+
+        # Signup / first post-Keycloak sync per IP — limits bot-driven account
+        # provisioning. Key = client IP.
+        signup_ip:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '60 minutes'
+
+        # Authenticated user creating a Secure Bridge link. Key = user identifier.
+        secret_link_create:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '60 minutes'
+
+        # Guest/anonymous Secure Bridge link creation. Key = client IP.
+        secret_link_create_guest:
+            policy: 'sliding_window'
+            limit: 50
+            interval: '60 minutes'
+
+        # Vault entry write (PUT /api/vault). Key = user identifier.
+        vault_create:
+            policy: 'sliding_window'
+            limit: 60
+            interval: '60 minutes'
+
+        # Meilisearch tenant token issuance. Key = user identifier (or IP for guests).
+        search_token:
+            policy: 'sliding_window'
+            limit: 120
+            interval: '60 minutes'
+
+        # Abuse report submission (used by Lot 4). Key = client IP.
+        report_submit:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '60 minutes'
