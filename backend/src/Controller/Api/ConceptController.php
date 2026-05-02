@@ -12,7 +12,9 @@ use App\Repository\TagRepository;
 use App\Repository\TeamRepository;
 use App\Search\SnippetIndexer;
 use App\Security\Voter\ConceptVoter;
+use App\Service\QuotaExceededException;
 use App\Service\TeamMembershipService;
+use App\Service\UserQuota;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,6 +36,7 @@ final class ConceptController extends AbstractController
         private readonly SerializerInterface $serializer,
         private readonly ValidatorInterface $validator,
         private readonly SnippetIndexer $snippetIndexer,
+        private readonly UserQuota $userQuota,
     ) {
     }
 
@@ -82,6 +85,15 @@ final class ConceptController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
+        try {
+            $this->userQuota->ensureCanCreateConcept($user);
+        } catch (QuotaExceededException $e) {
+            return $this->json(
+                ['error' => 'Quota atteint', 'quota' => $e->getQuota(), 'limit' => $e->getLimit()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
         $payload = $this->decodeJson($request);
         if ($payload instanceof JsonResponse) {
             return $payload;
@@ -101,7 +113,14 @@ final class ConceptController extends AbstractController
         $this->syncTags($concept, $tagNames);
 
         // Handle snippets
-        $this->syncSnippets($concept, $payload['snippets'] ?? []);
+        $snippetsData = $payload['snippets'] ?? [];
+        if (is_array($snippetsData) && count($snippetsData) > UserQuota::MAX_SNIPPETS_PER_CONCEPT) {
+            return $this->json(
+                ['error' => 'Quota atteint', 'quota' => UserQuota::QUOTA_SNIPPETS, 'limit' => UserQuota::MAX_SNIPPETS_PER_CONCEPT],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+        $this->syncSnippets($concept, $snippetsData);
 
         // Handle team sharing (must happen after visibility is set)
         $teamError = $this->applySharedTeamsOnCreate($concept, $user, $payload);

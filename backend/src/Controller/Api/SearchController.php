@@ -11,7 +11,11 @@ use App\Search\PayloadIndexer;
 use App\Search\SnippetIndexer;
 use App\Search\TagIndexer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -32,13 +36,33 @@ final class SearchController extends AbstractController
     public function __construct(
         private readonly MeilisearchClient $meili,
         private readonly TeamMemberRepository $teamMemberRepo,
+        #[Autowire(service: 'limiter.search_token')]
+        private readonly RateLimiterFactory $searchTokenLimiter,
     ) {
     }
 
     #[Route('/api/search/token', name: 'api_search_token', methods: ['GET'])]
-    public function token(): JsonResponse
+    public function token(Request $request): JsonResponse
     {
         $user = $this->getUser();
+
+        // Key the limiter on the user identifier when authenticated, otherwise
+        // fall back to the client IP so guest token requests can't be abused.
+        $key = $user instanceof User
+            ? $user->getUserIdentifier()
+            : ('guest:' . ($request->getClientIp() ?? 'unknown'));
+
+        $limit = $this->searchTokenLimiter->create($key)->consume();
+        if (!$limit->isAccepted()) {
+            $retryAfter = max(1, $limit->getRetryAfter()->getTimestamp() - time());
+
+            return new JsonResponse(
+                ['error' => 'Trop de requêtes, réessayez plus tard.'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+                ['Retry-After' => (string) $retryAfter],
+            );
+        }
+
         $rules = $this->buildSearchRules($user);
 
         $expiresAt = (new \DateTimeImmutable())->modify('+' . self::TOKEN_TTL_SECONDS . ' seconds');

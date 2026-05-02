@@ -8,11 +8,15 @@ use App\Entity\User;
 use App\Entity\VaultEntry;
 use App\Repository\VaultEntryRepository;
 use App\Security\Voter\VaultEntryVoter;
+use App\Service\QuotaExceededException;
+use App\Service\UserQuota;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -35,6 +39,9 @@ final class VaultController extends AbstractController
         private readonly VaultEntryRepository $vaultRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly SerializerInterface $serializer,
+        private readonly UserQuota $userQuota,
+        #[Autowire(service: 'limiter.vault_create')]
+        private readonly RateLimiterFactory $vaultCreateLimiter,
     ) {
     }
 
@@ -75,6 +82,17 @@ final class VaultController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
+        $limit = $this->vaultCreateLimiter->create($user->getUserIdentifier())->consume();
+        if (!$limit->isAccepted()) {
+            $retryAfter = max(1, $limit->getRetryAfter()->getTimestamp() - time());
+
+            return new JsonResponse(
+                ['error' => 'Trop de requêtes, réessayez plus tard.'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+                ['Retry-After' => (string) $retryAfter],
+            );
+        }
+
         $data = $this->decodeJson($request);
         if ($data instanceof JsonResponse) {
             return $data;
@@ -99,6 +117,15 @@ final class VaultController extends AbstractController
         $created = false;
 
         if ($entry === null) {
+            try {
+                $this->userQuota->ensureCanCreateVaultItem($user);
+            } catch (QuotaExceededException $e) {
+                return $this->json(
+                    ['error' => 'Quota atteint', 'quota' => $e->getQuota(), 'limit' => $e->getLimit()],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+
             $entry = new VaultEntry();
             $entry->setOwner($user);
             $created = true;

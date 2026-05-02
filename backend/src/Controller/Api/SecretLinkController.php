@@ -8,11 +8,15 @@ use App\Entity\SecretLink;
 use App\Entity\User;
 use App\Repository\SecretLinkRepository;
 use App\Security\Voter\SecretLinkVoter;
+use App\Service\QuotaExceededException;
+use App\Service\UserQuota;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -36,6 +40,11 @@ final class SecretLinkController extends AbstractController
         private readonly SecretLinkRepository $secretLinkRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly SerializerInterface $serializer,
+        private readonly UserQuota $userQuota,
+        #[Autowire(service: 'limiter.secret_link_create')]
+        private readonly RateLimiterFactory $secretLinkCreateLimiter,
+        #[Autowire(service: 'limiter.secret_link_create_guest')]
+        private readonly RateLimiterFactory $secretLinkCreateGuestLimiter,
     ) {
     }
 
@@ -49,6 +58,28 @@ final class SecretLinkController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $user = $this->getUser();
+
+        // Rate-limit FIRST: cap abusive POSTs (incl. unauthenticated probes)
+        // before doing any DB work. Auth users keyed by identifier; guests by IP.
+        if ($user instanceof User) {
+            $factory = $this->secretLinkCreateLimiter;
+            $key = $user->getUserIdentifier();
+        } else {
+            $factory = $this->secretLinkCreateGuestLimiter;
+            $key = 'guest:' . ($request->getClientIp() ?? 'unknown');
+        }
+
+        $limit = $factory->create($key)->consume();
+        if (!$limit->isAccepted()) {
+            $retryAfter = max(1, $limit->getRetryAfter()->getTimestamp() - time());
+
+            return new JsonResponse(
+                ['error' => 'Trop de requêtes, réessayez plus tard.'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+                ['Retry-After' => (string) $retryAfter],
+            );
+        }
+
         if (!$user instanceof User) {
             return $this->json(['error' => 'Authentication required.'], Response::HTTP_UNAUTHORIZED);
         }
@@ -65,6 +96,15 @@ final class SecretLinkController extends AbstractController
 
         if (strlen($ciphertext) > 1_048_576) {
             return $this->json(['error' => 'Ciphertext exceeds the maximum allowed size (1 MiB).'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            $this->userQuota->ensureCanCreateSecretLink($user);
+        } catch (QuotaExceededException $e) {
+            return $this->json(
+                ['error' => 'Quota atteint', 'quota' => $e->getQuota(), 'limit' => $e->getLimit()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
         }
 
         $link = new SecretLink();
