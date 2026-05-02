@@ -11,6 +11,8 @@ RUN npx ng build --configuration=production
 # --- Serve with nginx ---
 FROM nginx:alpine
 
+RUN apk upgrade --no-cache
+
 RUN rm -rf /usr/share/nginx/html/*
 COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/html
 RUN if [ -f /usr/share/nginx/html/index.csr.html ] && [ ! -f /usr/share/nginx/html/index.html ]; then \
