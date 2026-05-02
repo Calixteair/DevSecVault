@@ -36,6 +36,10 @@ services:
       MEILI_URL: "http://dsv-meilisearch:7700"
       MEILI_MASTER_KEY: "${MEILI_MASTER_KEY}"
       CORS_ALLOW_ORIGIN: "^https://vault\\.calixteair\\.fr$$"
+    labels:
+      ofelia.enabled: "true"
+      ofelia.job-exec.purge.schedule: "@every 5m"
+      ofelia.job-exec.purge.command: "php bin/console app:purge-expired"
     security_opt:
       - no-new-privileges:true
     networks:
@@ -94,6 +98,27 @@ services:
       - no-new-privileges:true
     networks:
       - dsv-internal
+
+  # ---------------------------------------------------------------------------
+  # Ofelia — in-stack scheduler that runs `app:purge-expired` every 5 minutes
+  # via `docker exec` against the PHP container (labels declared on `php`).
+  # Read-only filesystem + no new privileges; only the docker socket is
+  # mounted (read-only) so it can list containers and start the exec.
+  # ---------------------------------------------------------------------------
+  ofelia:
+    image: mcuadros/ofelia:latest
+    container_name: dsv-ofelia
+    depends_on:
+      - php
+    restart: unless-stopped
+    networks:
+      - dsv-internal
+    command: daemon --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
 
 volumes:
   postgres_data:
