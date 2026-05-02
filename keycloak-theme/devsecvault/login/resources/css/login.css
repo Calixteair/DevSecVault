@@ -321,6 +321,25 @@
     font-size: 0.875rem;
 }
 
+/* Block-style checkbox for long-text labels (e.g. terms of service) */
+.dsv-checkbox--block {
+    align-items: flex-start;
+    gap: 0.625rem;
+}
+
+.dsv-checkbox--block input[type="checkbox"] {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+}
+
+.dsv-checkbox--block label {
+    line-height: 1.4;
+}
+
+.dsv-terms {
+    margin-bottom: 1.5rem;
+}
+
 /* Links */
 .dsv-link {
     color: var(--dsv-primary);
