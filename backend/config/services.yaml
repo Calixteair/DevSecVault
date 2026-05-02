@@ -9,6 +9,9 @@ parameters:
     keycloak_client_id: '%env(KEYCLOAK_CLIENT_ID)%'
     meili_url: '%env(MEILI_URL)%'
     meili_master_key: '%env(MEILI_MASTER_KEY)%'
+    report_notify_from: '%env(default::REPORT_NOTIFY_FROM)%'
+    report_notify_to: '%env(default::REPORT_NOTIFY_TO)%'
+    app_public_url: '%env(default::APP_PUBLIC_URL)%'
 
 services:
     # default configuration for services in *this* file
@@ -37,3 +40,9 @@ services:
         arguments:
             $meiliUrl: '%meili_url%'
             $masterKey: '%meili_master_key%'
+
+    App\Service\ReportNotifier:
+        arguments:
+            $fromAddress: '%report_notify_from%'
+            $toAddress: '%report_notify_to%'
+            $adminBaseUrl: '%app_public_url%'

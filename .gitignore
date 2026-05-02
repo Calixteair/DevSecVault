@@ -15,6 +15,7 @@ Thumbs.db
 
 # ---- Docker ----
 docker-compose.override.yml
+backend/compose.override.yaml
 
 # ---- Environment (secrets) ----
 .env.local
