@@ -15,6 +15,7 @@ import {
 import { TeamService } from '../../core/services/team.service';
 import { AuthService } from '../../core/services/auth.service';
 import { TeamSummary } from '../../core/models/team.model';
+import { FooterComponent } from '../../layout/footer/footer.component';
 
 const icons = { AlertTriangle, Check, Lock, Shield, Users };
 
@@ -28,7 +29,7 @@ type InviteState =
 @Component({
   selector: 'app-invite-landing',
   standalone: true,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, FooterComponent],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -107,6 +108,7 @@ type InviteState =
           DevSecVault · Team Invite
         </footer>
       </div>
+      <app-footer />
     </div>
   `,
   styles: [`
@@ -121,9 +123,12 @@ type InviteState =
     }
     .invite-shell {
       min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 2rem 1.25rem;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 2rem 1.25rem 0;
+      gap: 2rem;
     }
+    .invite-shell app-footer { width: 100%; align-self: stretch; }
     .invite-panel {
       width: 100%; max-width: 480px;
       background: var(--card);

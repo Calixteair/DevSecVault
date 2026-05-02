@@ -14,9 +14,16 @@ export const serverRoutes: ServerRoute[] = [
   { path: 'teams', renderMode: RenderMode.Client },
   { path: 'teams/**', renderMode: RenderMode.Client },
   { path: 'admin', renderMode: RenderMode.Client },
+  { path: 'admin/reports', renderMode: RenderMode.Client },
   { path: 'settings', renderMode: RenderMode.Client },
   { path: 'profile', renderMode: RenderMode.Client },
   { path: 'invite/:token', renderMode: RenderMode.Client },
+
+  // Legal pages — fully static, can be SSR'd for SEO + offline reads.
+  { path: 'legal/terms', renderMode: RenderMode.Client },
+  { path: 'legal/privacy', renderMode: RenderMode.Client },
+  { path: 'legal/notice', renderMode: RenderMode.Client },
+  { path: 'legal/abuse', renderMode: RenderMode.Client },
 
   // Catch-all fallback
   { path: '**', renderMode: RenderMode.Client },

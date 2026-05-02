@@ -16,6 +16,7 @@ import { SecretLinkService } from '../../core/services/secret-link.service';
 import { SecureBridgeCryptoService } from '../../core/services/secure-bridge-crypto.service';
 import { SecretLinkRead } from '../../core/models/secret-link.model';
 import { AuthService } from '../../core/services/auth.service';
+import { FooterComponent } from '../../layout/footer/footer.component';
 
 const icons = { AlertTriangle, Copy, Eye, Flame, Lock, Shield };
 
@@ -32,7 +33,7 @@ type ViewerState =
 
 @Component({
   selector: 'app-secret-viewer',
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, FooterComponent],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -139,6 +140,7 @@ type ViewerState =
           DevSecVault · Secure Bridge
         </footer>
       </div>
+      <app-footer />
     </div>
   `,
   styles: [`
@@ -149,9 +151,12 @@ type ViewerState =
     }
     .viewer-shell {
       min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 2rem 1.25rem;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 2rem 1.25rem 0;
+      gap: 2rem;
     }
+    .viewer-shell app-footer { width: 100%; align-self: stretch; }
     .viewer-panel {
       width: 100%; max-width: 540px;
       background: var(--card);

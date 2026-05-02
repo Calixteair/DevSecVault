@@ -20,6 +20,7 @@ import {
   Copy,
   Check,
   Edit3,
+  Flag,
   Save,
   Trash2,
   Terminal,
@@ -31,12 +32,13 @@ import {
 } from 'lucide-angular';
 import { MonacoEditorComponent } from '../../shared/components/monaco-editor/monaco-editor.component';
 import { ConfirmDialogService } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ReportDialogComponent } from '../../shared/components/report-dialog/report-dialog.component';
 import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 import { TagPillComponent } from '../../shared/components/tag-pill/tag-pill.component';
 import { Concept, Snippet } from '../../core/models/concept.model';
 import { TeamSummary } from '../../core/models/team.model';
 
-const icons = { Code, Copy, Check, Edit3, Save, Trash2, Terminal, Variable, Eye, Plus, Users, X };
+const icons = { Code, Copy, Check, Edit3, Flag, Save, Trash2, Terminal, Variable, Eye, Plus, Users, X };
 
 interface TemplateVariable {
   name: string;
@@ -70,7 +72,7 @@ export interface ConceptEditPayload {
 
 @Component({
   selector: 'app-concept-editor',
-  imports: [FormsModule, LowerCasePipe, LucideAngularModule, MonacoEditorComponent, TagInputComponent, TagPillComponent],
+  imports: [FormsModule, LowerCasePipe, LucideAngularModule, MonacoEditorComponent, ReportDialogComponent, TagInputComponent, TagPillComponent],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -119,6 +121,16 @@ export interface ConceptEditPayload {
                 Delete
               </button>
             }
+          } @else if (concept().visibility === 'public') {
+            <button
+              class="btn btn-report"
+              type="button"
+              (click)="openReportDialog()"
+              title="Signaler ce concept"
+            >
+              <lucide-icon name="flag" [size]="14" [strokeWidth]="2"></lucide-icon>
+              Signaler
+            </button>
           }
           <button class="btn btn-primary" (click)="copyCode()" [disabled]="copySuccess()">
             @if (copySuccess()) {
@@ -313,6 +325,14 @@ export interface ConceptEditPayload {
           </div>
         </div>
       }
+
+      @if (showReportDialog()) {
+        <app-report-dialog
+          targetType="concept"
+          [targetId]="concept().id"
+          (closed)="showReportDialog.set(false)"
+        />
+      }
     </div>
   `,
   styles: [`
@@ -438,6 +458,16 @@ export interface ConceptEditPayload {
     .btn-danger:hover {
       background: var(--destructive);
       color: var(--destructive-foreground);
+    }
+    .btn-report {
+      background: transparent;
+      color: var(--muted-foreground);
+      border: 1px solid var(--border);
+    }
+    .btn-report:hover {
+      background: color-mix(in srgb, var(--destructive) 10%, transparent);
+      color: var(--destructive);
+      border-color: color-mix(in srgb, var(--destructive) 35%, transparent);
     }
 
     /* Language Tabs */
@@ -873,6 +903,7 @@ export class ConceptEditorComponent {
   readonly selectedSnippetIndex = signal(0);
   readonly isEditing = signal(false);
   readonly copySuccess = signal(false);
+  readonly showReportDialog = signal(false);
   private editedCode = '';
   readonly variableValues = signal<Map<string, string>>(new Map());
 
@@ -1063,6 +1094,10 @@ export class ConceptEditorComponent {
       }
     }
     return out;
+  }
+
+  openReportDialog(): void {
+    this.showReportDialog.set(true);
   }
 
   async copyCode(): Promise<void> {
