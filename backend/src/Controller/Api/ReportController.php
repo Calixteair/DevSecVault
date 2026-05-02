@@ -13,6 +13,7 @@ use App\Repository\ConceptRepository;
 use App\Repository\PayloadRepository;
 use App\Repository\ReportRepository;
 use App\Repository\SnippetRepository;
+use App\Service\ReportNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -41,6 +42,7 @@ final class ReportController extends AbstractController
         private readonly SnippetRepository $snippetRepository,
         private readonly PayloadRepository $payloadRepository,
         private readonly ValidatorInterface $validator,
+        private readonly ReportNotifier $reportNotifier,
         #[Autowire(service: 'limiter.report_submit')]
         private readonly RateLimiterFactory $reportSubmitLimiter,
     ) {
@@ -122,6 +124,8 @@ final class ReportController extends AbstractController
 
         $this->entityManager->persist($report);
         $this->entityManager->flush();
+
+        $this->reportNotifier->notifyNewReport($report);
 
         return $this->json(['id' => (string) $report->getId()], Response::HTTP_CREATED);
     }

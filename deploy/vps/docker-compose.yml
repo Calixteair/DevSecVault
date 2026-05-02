@@ -36,6 +36,10 @@ services:
       MEILI_URL: "http://dsv-meilisearch:7700"
       MEILI_MASTER_KEY: "${MEILI_MASTER_KEY}"
       CORS_ALLOW_ORIGIN: "^https://vault\\.calixteair\\.fr$$"
+      MAILER_DSN: "${MAILER_DSN}"
+      REPORT_NOTIFY_FROM: "${REPORT_NOTIFY_FROM}"
+      REPORT_NOTIFY_TO: "${REPORT_NOTIFY_TO}"
+      APP_PUBLIC_URL: "${APP_PUBLIC_URL}"
     labels:
       ofelia.enabled: "true"
       ofelia.job-exec.purge.schedule: "@every 5m"
