@@ -56,6 +56,18 @@ class Payload
     private string $visibility = 'private';
 
     /**
+     * Lot 4 — moderation lifecycle. `active` for normal content, `flagged`
+     * while under admin review, `hidden` if soft-removed (visible only to
+     * the owner and admins), `removed` for legal-hold soft delete.
+     *
+     * Exposed only to admins via `payload:admin` group.
+     */
+    #[ORM\Column(type: Types::STRING, length: 20, options: ['default' => 'active'])]
+    #[Assert\Choice(choices: ['active', 'flagged', 'hidden', 'removed'], message: 'Invalid moderation status.')]
+    #[Groups(['payload:admin'])]
+    private string $moderationStatus = 'active';
+
+    /**
      * Base64(nonce || ciphertext || tag) — AES-256-GCM envelope.
      * NEVER exposed via serialization groups. The plaintext is attached at
      * response time by the controller as a virtual `body` field (payload:read).
@@ -167,6 +179,18 @@ class Payload
     public function setVisibility(string $visibility): static
     {
         $this->visibility = $visibility;
+
+        return $this;
+    }
+
+    public function getModerationStatus(): string
+    {
+        return $this->moderationStatus;
+    }
+
+    public function setModerationStatus(string $moderationStatus): static
+    {
+        $this->moderationStatus = $moderationStatus;
 
         return $this;
     }

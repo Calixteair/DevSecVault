@@ -41,6 +41,19 @@ class Concept
     #[Groups(['concept:list', 'concept:read', 'concept:write'])]
     private string $visibility = 'private';
 
+    /**
+     * Lot 4 — moderation lifecycle. `active` for normal content, `flagged`
+     * while under admin review, `hidden` if soft-removed (visible only to
+     * the owner and admins), `removed` for legal-hold soft delete.
+     *
+     * Exposed only to admins via `concept:admin` group, never to regular
+     * users (privacy: don't reveal that a peer's content was flagged).
+     */
+    #[ORM\Column(type: Types::STRING, length: 20, options: ['default' => 'active'])]
+    #[Assert\Choice(choices: ['active', 'flagged', 'hidden', 'removed'], message: 'Invalid moderation status.')]
+    #[Groups(['concept:admin'])]
+    private string $moderationStatus = 'active';
+
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['concept:list', 'concept:read'])]
@@ -126,6 +139,18 @@ class Concept
     public function setVisibility(string $visibility): static
     {
         $this->visibility = $visibility;
+
+        return $this;
+    }
+
+    public function getModerationStatus(): string
+    {
+        return $this->moderationStatus;
+    }
+
+    public function setModerationStatus(string $moderationStatus): static
+    {
+        $this->moderationStatus = $moderationStatus;
 
         return $this;
     }

@@ -43,6 +43,15 @@ class Snippet
     #[Groups(['concept:read', 'concept:write', 'snippet:read', 'snippet:write'])]
     private int $sortOrder = 0;
 
+    /**
+     * Lot 4 — moderation lifecycle. Values: `active` / `flagged` / `hidden` / `removed`.
+     * Exposed only to admins via `snippet:admin` group.
+     */
+    #[ORM\Column(type: Types::STRING, length: 20, options: ['default' => 'active'])]
+    #[Assert\Choice(choices: ['active', 'flagged', 'hidden', 'removed'], message: 'Invalid moderation status.')]
+    #[Groups(['snippet:admin'])]
+    private string $moderationStatus = 'active';
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     #[Groups(['concept:read', 'snippet:read'])]
     private \DateTimeImmutable $createdAt;
@@ -100,6 +109,18 @@ class Snippet
     public function setSortOrder(int $sortOrder): static
     {
         $this->sortOrder = $sortOrder;
+
+        return $this;
+    }
+
+    public function getModerationStatus(): string
+    {
+        return $this->moderationStatus;
+    }
+
+    public function setModerationStatus(string $moderationStatus): static
+    {
+        $this->moderationStatus = $moderationStatus;
 
         return $this;
     }
