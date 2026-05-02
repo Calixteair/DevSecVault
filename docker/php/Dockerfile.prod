@@ -27,9 +27,18 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interactio
 
 COPY backend/ .
 RUN composer dump-autoload --optimize --no-dev \
-    && php bin/console cache:clear --env=prod --no-debug \
-    && chown -R www-data:www-data var/ \
-    && chmod -R 775 var/
+    && php bin/console cache:clear --env=prod --no-debug
+
+# Run as a non-root user. We create `app` (UID/GID 1000) and rebind the
+# php-fpm pool to that user so the master + workers all stay unprivileged.
+RUN addgroup -g 1000 app \
+    && adduser -D -u 1000 -G app -s /sbin/nologin app \
+    && sed -i 's|^user = www-data|user = app|' /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i 's|^group = www-data|group = app|' /usr/local/etc/php-fpm.d/www.conf \
+    && chown -R app:app /var/www/backend \
+    && chmod -R 775 /var/www/backend/var
+
+USER app
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]

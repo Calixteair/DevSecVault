@@ -36,6 +36,10 @@ class Snippet
 
     #[ORM\Column(type: Types::TEXT)]
     #[Assert\NotBlank(message: 'Code is required.')]
+    #[Assert\Length(
+        max: 200_000,
+        maxMessage: 'Le contenu dépasse la taille maximale autorisée.'
+    )]
     #[Groups(['concept:read', 'concept:write', 'snippet:read', 'snippet:write'])]
     private string $code;
 

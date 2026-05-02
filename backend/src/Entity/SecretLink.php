@@ -10,6 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Secure Bridge — shareable one-shot secret link (E2E encrypted).
@@ -50,6 +51,10 @@ class SecretLink
      * client using an ephemeral random key carried in the URL fragment.
      */
     #[ORM\Column(type: Types::TEXT)]
+    #[Assert\Length(
+        max: 1_000_000,
+        maxMessage: 'Le contenu dépasse la taille maximale autorisée.'
+    )]
     #[Groups(['secret_link:read'])]
     private string $ciphertext = '';
 
