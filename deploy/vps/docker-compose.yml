@@ -40,6 +40,7 @@ services:
       REPORT_NOTIFY_FROM: "${REPORT_NOTIFY_FROM}"
       REPORT_NOTIFY_TO: "${REPORT_NOTIFY_TO}"
       APP_PUBLIC_URL: "${APP_PUBLIC_URL}"
+      REPORT_IP_HASH_SALT: "${REPORT_IP_HASH_SALT}"
     labels:
       ofelia.enabled: "true"
       ofelia.job-exec.purge.schedule: "@every 5m"

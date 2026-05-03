@@ -13,11 +13,29 @@ import { LegalShellComponent } from './legal-shell.component';
     <app-legal-shell title="Mentions légales">
       <h2>Éditeur</h2>
       <p>
-        Calixte Reymond, étudiant en cybersécurité, France.<br />
+        Calixte Reymond, particulier non professionnel, étudiant en
+        cybersécurité, domicilié en France.<br />
         Service auto-hébergé à titre <strong>non commercial</strong>.
       </p>
       <p>
-        Contact : <code>dsvabuse&#64;calixteair.fr</code>
+        Conformément à l'article 6-III-2 de la LCEN, l'éditeur, en sa
+        qualité de particulier, n'est pas tenu de publier ses coordonnées
+        personnelles complètes ; celles-ci ont été communiquées à
+        l'hébergeur (voir section <em>Hébergeur</em>) et peuvent être
+        sollicitées par l'autorité judiciaire.
+      </p>
+      <p>
+        Contact public : <code>dsvabuse&#64;calixteair.fr</code>
+      </p>
+
+      <h2>Financement</h2>
+      <p>
+        Le service est financé sur les fonds propres de l'éditeur. Des
+        dons libres peuvent être acceptés via PayPal sur la page
+        <a routerLink="/support">Soutenir le projet</a>, à la seule fin
+        de couvrir les frais d'infrastructure (VPS, nom de domaine,
+        certificats, mail). Les dons ne donnent pas droit à un reçu
+        fiscal et ne créent aucune obligation contractuelle.
       </p>
 
       <h2>Directeur de publication</h2>
@@ -27,10 +45,11 @@ import { LegalShellComponent } from './legal-shell.component';
 
       <h2>Hébergeur</h2>
       <p>
-        Hostinger International Ltd. — VPS situé en Europe.<br />
-        IP : <code>185.166.39.153</code><br />
+        Hostinger International Ltd.<br />
+        61 Lordou Vironos Street, 6023 Larnaca, Chypre.<br />
         Contact : via le panneau client Hostinger
-        (<a href="https://www.hostinger.com" target="_blank" rel="noopener">hostinger.com</a>).
+        (<a href="https://www.hostinger.com" target="_blank" rel="noopener">hostinger.com</a>).<br />
+        VPS situé en Europe.
       </p>
 
       <h2>Adresse de signalement</h2>
@@ -50,9 +69,11 @@ import { LegalShellComponent } from './legal-shell.component';
 
       <h2>Crédits</h2>
       <ul>
-        <li>Icônes : <a href="https://lucide.dev" target="_blank" rel="noopener">Lucide</a>.</li>
-        <li>Polices : Inter et JetBrains Mono (Google Fonts).</li>
+        <li>Icônes : <a href="https://lucide.dev" target="_blank" rel="noopener">Lucide</a> (licence ISC).</li>
+        <li>Polices : Inter et JetBrains Mono (auto-hébergées, licence SIL Open Font 1.1).</li>
         <li>Frameworks : Angular 21, Symfony 8.</li>
+        <li>Authentification : Keycloak.</li>
+        <li>Recherche : Meilisearch.</li>
       </ul>
     </app-legal-shell>
   `,

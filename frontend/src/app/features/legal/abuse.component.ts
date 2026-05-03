@@ -45,10 +45,17 @@ import { LegalShellComponent } from './legal-shell.component';
 
       <h2>Délai de traitement</h2>
       <p>
-        L'éditeur s'engage à examiner tout signalement justifié dans un
-        délai maximal de <strong>24 heures ouvrées</strong>. Le contenu
-        manifestement illicite est retiré ou rendu inaccessible dans ce
-        même délai.
+        L'éditeur s'engage à examiner tout signalement dans les meilleurs
+        délais et au plus tard sous <strong>7 jours</strong>. Le contenu
+        manifestement illicite est retiré ou rendu inaccessible dès la
+        prise de connaissance, sans délai déraisonnable.
+      </p>
+      <p>
+        Les signalements relevant de la pédopornographie (CSAM), de
+        l'apologie du terrorisme ou de menaces graves contre les personnes
+        sont traités en priorité absolue, dans l'esprit du règlement (UE)
+        2021/784 (1 heure pour les contenus terroristes après injonction
+        d'autorité compétente).
       </p>
 
       <h2>Décision et recours</h2>
