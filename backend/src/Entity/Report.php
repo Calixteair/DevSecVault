@@ -96,7 +96,8 @@ class Report
     private ?User $reporter = null;
 
     /**
-     * SHA-256 hex digest of the reporter's IP (RGPD: never stored in clear).
+     * HMAC-SHA256 hex digest of the reporter's IP, keyed with REPORT_IP_HASH_SALT
+     * (RGPD: never stored in clear; salt prevents brute-force IPv4 recovery).
      */
     #[ORM\Column(type: Types::STRING, length: 64)]
     #[Groups(['report:read'])]

@@ -45,6 +45,8 @@ final class ReportController extends AbstractController
         private readonly ReportNotifier $reportNotifier,
         #[Autowire(service: 'limiter.report_submit')]
         private readonly RateLimiterFactory $reportSubmitLimiter,
+        #[Autowire(env: 'REPORT_IP_HASH_SALT')]
+        private readonly string $reportIpHashSalt,
     ) {
     }
 
@@ -103,7 +105,11 @@ final class ReportController extends AbstractController
         $report->setTargetId($targetId);
         $report->setReason($reason);
         $report->setDetails($details);
-        $report->setReporterIpHash(hash('sha256', $clientIp));
+        // HMAC-SHA256 with a server-side secret salt: prevents brute-force IPv4
+        // recovery (the 2^32 search space would be trivial against a plain SHA-256).
+        // Salt lives in OpenBao (REPORT_IP_HASH_SALT) — rotating it invalidates
+        // correlations across past reports, which is desirable.
+        $report->setReporterIpHash(hash_hmac('sha256', $clientIp, $this->reportIpHashSalt));
 
         $user = $this->getUser();
         if ($user instanceof User) {

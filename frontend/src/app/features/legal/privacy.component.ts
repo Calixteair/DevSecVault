@@ -30,12 +30,12 @@ import { LegalShellComponent } from './legal-shell.component';
         </li>
         <li>
           <strong>Empreinte cryptographique de l'adresse IP</strong>
-          (pseudonymisation par hachage SHA-256) stockée avec les
-          signalements, à des fins de lutte contre les abus. Cette
-          empreinte ne constitue pas une anonymisation au sens du RGPD :
-          une IPv4 reste théoriquement reconstructible par recherche
-          exhaustive et est donc traitée comme une donnée à caractère
-          personnel.
+          (pseudonymisation par HMAC-SHA256, clé secrète stockée
+          séparément dans le coffre-fort de l'éditeur) stockée avec les
+          signalements, à des fins de lutte contre les abus. La clé
+          n'est jamais exposée et empêche la reconstruction des IP par
+          recherche exhaustive. L'empreinte reste néanmoins traitée
+          comme une donnée à caractère personnel au sens du RGPD.
         </li>
         <li>
           <strong>Adresse IP en clair</strong> dans les journaux techniques
