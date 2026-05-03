@@ -20,6 +20,16 @@ import { LegalShellComponent } from './legal-shell.component';
         Contact : <code>dsvabuse&#64;calixteair.fr</code>
       </p>
 
+      <h2>Financement</h2>
+      <p>
+        Le service est financé sur les fonds propres de l'éditeur. Des
+        dons libres peuvent être acceptés via PayPal sur la page
+        <a routerLink="/support">Soutenir le projet</a>, à la seule fin
+        de couvrir les frais d'infrastructure (VPS, nom de domaine,
+        certificats, mail). Les dons ne donnent pas droit à un reçu
+        fiscal et ne créent aucune obligation contractuelle.
+      </p>
+
       <h2>Directeur de publication</h2>
       <p>
         L'éditeur lui-même.

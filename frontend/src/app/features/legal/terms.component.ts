@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { LegalShellComponent } from './legal-shell.component';
 
 /**
@@ -9,15 +10,17 @@ import { LegalShellComponent } from './legal-shell.component';
 @Component({
   selector: 'app-legal-terms',
   standalone: true,
-  imports: [LegalShellComponent],
+  imports: [LegalShellComponent, RouterLink],
   template: `
     <app-legal-shell title="Conditions générales d'utilisation">
       <h2>Préambule</h2>
       <p>
         DevSecVault est une plateforme web de partage de connaissances en
         cybersécurité, auto-hébergée et opérée à titre <strong>non commercial</strong>
-        par un particulier en France. L'éditeur ne perçoit aucun revenu lié à
-        l'exploitation du service.
+        par un particulier en France. L'éditeur ne tire aucun bénéfice
+        commercial du service. Des dons libres peuvent être acceptés via la
+        page <a routerLink="/support">Soutenir le projet</a> à la seule fin
+        de couvrir les frais d'infrastructure (voir conditions sur cette page).
       </p>
       <p>
         Le service est régi par la Loi pour la confiance dans l'économie
@@ -102,14 +105,30 @@ import { LegalShellComponent } from './legal-shell.component';
         service.
       </p>
 
-      <h2>7. Droit applicable</h2>
+      <h2>7. Dons</h2>
+      <p>
+        DevSecVault peut recevoir des dons libres via PayPal, dans le seul
+        but de couvrir les frais d'infrastructure. Le don est ponctuel,
+        non remboursable (sauf erreur manifeste signalée sous 14 jours),
+        non contractuel, et ne confère aucun droit particulier sur le
+        service (pas de fonctionnalité réservée, pas de quota augmenté,
+        pas d'accès privilégié). Les modalités sont décrites sur la page
+        <a routerLink="/support">Soutenir le projet</a>.
+      </p>
+      <p>
+        Le donateur ne reçoit pas de reçu fiscal : DevSecVault n'est pas
+        un organisme habilité au sens des articles 200 et 238 bis du Code
+        général des impôts.
+      </p>
+
+      <h2>8. Droit applicable</h2>
       <p>
         Les présentes CGU sont régies par le droit français. En cas de
         litige, et à défaut d'accord amiable, les tribunaux du siège du
         défendeur seront seuls compétents.
       </p>
 
-      <h2>8. Contact</h2>
+      <h2>9. Contact</h2>
       <p>
         Pour toute question relative aux présentes CGU :
         <code>dsvabuse&#64;calixteair.fr</code>.

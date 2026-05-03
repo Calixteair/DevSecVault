@@ -32,6 +32,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/legal/abuse.component').then(m => m.LegalAbuseComponent),
   },
   {
+    path: 'support',
+    loadComponent: () => import('./features/support/support.component').then(m => m.SupportComponent),
+  },
+  {
     path: '',
     loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),
     children: [

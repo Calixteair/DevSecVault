@@ -24,6 +24,7 @@ export const serverRoutes: ServerRoute[] = [
   { path: 'legal/privacy', renderMode: RenderMode.Client },
   { path: 'legal/notice', renderMode: RenderMode.Client },
   { path: 'legal/abuse', renderMode: RenderMode.Client },
+  { path: 'support', renderMode: RenderMode.Client },
 
   // Catch-all fallback
   { path: '**', renderMode: RenderMode.Client },

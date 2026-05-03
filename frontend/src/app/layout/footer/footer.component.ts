@@ -21,6 +21,8 @@ import { RouterLink } from '@angular/router';
         <a routerLink="/legal/notice" class="footer-link">Mentions légales</a>
         <span class="footer-sep" aria-hidden="true">·</span>
         <a routerLink="/legal/abuse" class="footer-link">Signalement</a>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a routerLink="/support" class="footer-link footer-link-support">Soutenir</a>
       </nav>
     </footer>
   `,
@@ -50,6 +52,8 @@ import { RouterLink } from '@angular/router';
       border-radius: 0.25rem;
     }
     .footer-link:hover { color: var(--foreground); }
+    .footer-link-support { color: var(--primary); font-weight: 500; }
+    .footer-link-support:hover { color: var(--primary); filter: brightness(1.15); }
     .footer-link:focus-visible {
       outline: 2px solid var(--primary);
       outline-offset: 2px;
