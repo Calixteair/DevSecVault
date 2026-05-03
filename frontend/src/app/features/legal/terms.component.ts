@@ -68,9 +68,17 @@ import { LegalShellComponent } from './legal-shell.component';
           ou via le bouton <em>Signaler</em> présent sur les pages publiques.
         </li>
         <li>
-          L'éditeur s'engage à examiner tout signalement justifié dans un
-          délai de <strong>24 heures ouvrées</strong> et à retirer ou désactiver
-          le contenu manifestement illégal.
+          L'éditeur s'engage à examiner tout signalement dans les meilleurs
+          délais et au plus tard sous <strong>7 jours</strong> ; le retrait
+          du contenu manifestement illégal est effectué sans délai déraisonnable
+          dès la prise de connaissance.
+        </li>
+        <li>
+          Pour les contenus relevant de la <strong>pédopornographie (CSAM)</strong>,
+          de l'<strong>apologie du terrorisme</strong> ou des <strong>menaces
+          graves contre les personnes</strong>, le retrait est traité en
+          priorité, dans l'esprit des dispositions du règlement (UE) 2021/784
+          relatif aux contenus terroristes en ligne.
         </li>
         <li>
           Conformément à l'article 6 de la LCEN, l'éditeur n'est pas l'auteur
@@ -78,12 +86,23 @@ import { LegalShellComponent } from './legal-shell.component';
           engagée uniquement en cas de connaissance effective d'un contenu
           manifestement illégal et d'absence d'action de retrait.
         </li>
+        <li>
+          Les contenus chiffrés de bout-en-bout (Secure Bridge) ne peuvent
+          techniquement pas être inspectés par l'éditeur ; leur destruction
+          automatique sous 10 minutes en limite la durée de vie.
+        </li>
       </ul>
 
       <h2>4. Résiliation</h2>
       <ul>
-        <li>L'utilisateur peut fermer son compte à tout moment depuis la page
-          <em>Profil</em>.</li>
+        <li>
+          L'utilisateur peut demander à tout moment la suppression de son
+          compte par e-mail à <code>dsvabuse&#64;calixteair.fr</code>. La
+          suppression est effective sous 30 jours, conformément aux droits
+          RGPD (voir <a routerLink="/legal/privacy">Politique de confidentialité</a>).
+          Une interface de suppression en libre-service sera ajoutée
+          ultérieurement.
+        </li>
         <li>
           L'éditeur se réserve le droit de suspendre ou de fermer un compte en
           cas de violation des présentes CGU, sans préavis ni indemnité.
@@ -101,8 +120,20 @@ import { LegalShellComponent } from './legal-shell.component';
       <p>
         L'utilisateur conserve la propriété des contenus qu'il publie. En les
         partageant publiquement sur DevSecVault, il accorde à la plateforme
-        une licence non exclusive, gratuite et limitée à la diffusion via le
-        service.
+        une licence non exclusive, gratuite, mondiale et limitée à la durée
+        de publication, à la seule fin de diffusion via le service. La licence
+        prend fin lorsque l'utilisateur retire le contenu ou supprime son
+        compte (sous réserve des copies de sauvegarde et obligations légales
+        de conservation).
+      </p>
+
+      <h2>6 bis. Tokens d'accès personnels (PAT)</h2>
+      <p>
+        Les jetons d'accès personnels (préfixés <code>dvs_</code>) générés
+        depuis la page <em>Settings → Tokens</em> permettent l'accès à l'API
+        au nom de l'utilisateur. Celui-ci est seul responsable de leur
+        confidentialité ; tout usage par un tiers est réputé effectué pour
+        son compte. Les tokens compromis doivent être révoqués immédiatement.
       </p>
 
       <h2>7. Dons</h2>

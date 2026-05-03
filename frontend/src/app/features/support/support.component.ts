@@ -78,6 +78,17 @@ import { LegalShellComponent } from '../legal/legal-shell.component';
         </li>
       </ul>
 
+      <h2>Traitement du paiement</h2>
+      <p>
+        Le paiement est traité exclusivement par <strong>PayPal (Europe)
+        S.à r.l. et Cie, S.C.A.</strong>, conformément aux conditions
+        générales et à la politique de confidentialité de PayPal
+        (<a href="https://www.paypal.com/fr/legalhub" target="_blank" rel="noopener">paypal.com/fr/legalhub</a>).
+        DevSecVault ne reçoit que le montant transféré et un identifiant
+        de transaction ; aucune donnée bancaire (numéro de carte, IBAN)
+        n'est transmise à la plateforme.
+      </p>
+
       <h2>Transparence</h2>
       <p>
         L'éditeur reste un particulier, et non une entreprise commerciale.
