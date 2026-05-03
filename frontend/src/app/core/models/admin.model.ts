@@ -34,3 +34,24 @@ export interface AdminPublicContent {
   concepts: ConceptListItem[];
   payloads: PayloadListItem[];
 }
+
+/**
+ * Single user row for the admin user-moderation table.
+ * Returned by GET /api/admin/users.
+ */
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  disabled: boolean;
+  teamCount: number;
+  createdAt: string;
+}
+
+export interface AdminUserPage {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

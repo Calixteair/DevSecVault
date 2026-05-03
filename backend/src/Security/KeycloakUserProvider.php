@@ -7,6 +7,7 @@ namespace App\Security;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Security\Core\Exception\DisabledException;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
@@ -52,6 +53,10 @@ final readonly class KeycloakUserProvider implements UserProviderInterface
             : 'user_' . substr($identifier, 0, 8);
 
         if ($user !== null) {
+            if ($user->isDisabled()) {
+                throw new DisabledException('Account banned.');
+            }
+
             // Sync role/email/username if they changed in Keycloak
             $changed = false;
             if ($user->getRoles() !== [$role]) {

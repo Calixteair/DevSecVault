@@ -10,6 +10,7 @@ use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
+use Symfony\Component\Security\Core\Exception\DisabledException;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
@@ -52,6 +53,10 @@ final readonly class ApiTokenHandler implements AccessTokenHandlerInterface
 
         if ($token->isExpired()) {
             throw new BadCredentialsException('Personal access token expired.');
+        }
+
+        if ($token->getUser()->isDisabled()) {
+            throw new DisabledException('Account banned.');
         }
 
         $token->setLastUsedAt(new \DateTimeImmutable());
