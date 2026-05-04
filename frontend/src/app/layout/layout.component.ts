@@ -32,17 +32,24 @@ import { FooterComponent } from './footer/footer.component';
       overflow: hidden;
       min-width: 0;
     }
+    /* Flex column so we can push the footer to the bottom of the scroll
+       container with margin-top:auto, even on short pages. */
     .layout-content {
       flex: 1;
       overflow-y: auto;
       padding: 1.5rem;
       -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
-    /* Footer flush against the bottom of the scroll area, with a soft margin so
-       it doesn't collide with page content. */
-    .layout-content :is(app-footer) {
+    /* Footer pinned to the bottom of the scroll viewport (sticky-bottom
+       behaviour without position:sticky, no overlap with page content). */
+    .layout-content > app-footer {
       display: block;
       margin: 2rem -1.5rem -1.5rem;
+      margin-top: auto;
+      flex-shrink: 0;
     }
 
     @media (max-width: 768px) {
@@ -55,8 +62,9 @@ import { FooterComponent } from './footer/footer.component';
         /* Leave room for bottom nav */
         padding-bottom: calc(3.5rem + var(--safe-bottom, 0px) + 0.5rem);
       }
-      .layout-content :is(app-footer) {
+      .layout-content > app-footer {
         margin: 1.5rem -0.75rem 0;
+        margin-top: auto;
       }
     }
   `],
