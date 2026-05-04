@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
 import {
   LucideAngularModule,
   LUCIDE_ICONS,
@@ -15,17 +16,19 @@ import {
   Wrench,
   Send,
   ExternalLink,
+  AlertTriangle,
+  Trash2,
 } from 'lucide-angular';
 import { DashboardService } from '../../core/services/dashboard.service';
-import { AuthService } from '../../core/services/auth.service';
+import { AccountService } from '../../core/services/account.service';
 import { UserProfile } from '../../core/models/dashboard.model';
 import { DashboardData } from '../../core/models/dashboard.model';
 
-const icons = { User, Mail, Shield, Crown, Users, Calendar, Code, Wrench, Send, ExternalLink };
+const icons = { User, Mail, Shield, Crown, Users, Calendar, Code, Wrench, Send, ExternalLink, AlertTriangle, Trash2 };
 
 @Component({
   selector: 'app-profile',
-  imports: [LucideAngularModule, RouterLink],
+  imports: [LucideAngularModule, RouterLink, FormsModule],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
@@ -106,6 +109,58 @@ const icons = { User, Mail, Shield, Crown, Users, Calendar, Code, Wrench, Send, 
               </div>
             } @else {
               <p class="empty-text">You're not part of any team yet.</p>
+            }
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="card danger-zone">
+            <h3 class="card-title danger-title">
+              <lucide-icon name="alert-triangle" [size]="16" [strokeWidth]="2"></lucide-icon>
+              Zone de danger
+            </h3>
+            <p class="danger-help">
+              La suppression de votre compte est <strong>irréversible</strong>. Toutes vos
+              données (concepts, snippets, payloads, vault, secret links, équipes dont vous
+              êtes l'unique lead) seront effacées. Les signalements que vous avez déposés
+              restent conservés (preuve LCEN) mais sans lien avec votre identité.
+            </p>
+            @if (deleteError()) {
+              <p class="danger-error">{{ deleteError() }}</p>
+            }
+            @if (!showDeleteForm()) {
+              <button type="button" class="btn-danger" (click)="showDeleteForm.set(true)">
+                <lucide-icon name="trash-2" [size]="14" [strokeWidth]="2"></lucide-icon>
+                Supprimer mon compte
+              </button>
+            } @else {
+              <div class="delete-form">
+                <label for="confirm-delete" class="delete-label">
+                  Tapez <code>DELETE</code> pour confirmer :
+                </label>
+                <input
+                  id="confirm-delete"
+                  type="text"
+                  class="delete-input"
+                  autocomplete="off"
+                  spellcheck="false"
+                  [ngModel]="confirmInput()"
+                  (ngModelChange)="confirmInput.set($event)"
+                  [disabled]="deleting()"
+                />
+                <div class="delete-actions">
+                  <button type="button" class="btn-cancel" (click)="cancelDelete()" [disabled]="deleting()">
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-danger"
+                    [disabled]="confirmInput() !== 'DELETE' || deleting()"
+                    (click)="confirmDelete()"
+                  >
+                    {{ deleting() ? 'Suppression…' : 'Supprimer définitivement' }}
+                  </button>
+                </div>
+              </div>
             }
           </div>
         </div>
@@ -269,13 +324,89 @@ const icons = { User, Mail, Shield, Crown, Users, Calendar, Code, Wrench, Send, 
       text-align: center;
       padding: 3rem 0;
     }
+
+    /* Danger zone */
+    .danger-zone {
+      grid-column: 1 / -1;
+      border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
+      background: color-mix(in srgb, var(--destructive) 4%, var(--card));
+    }
+    .danger-title { color: var(--destructive); }
+    .danger-help {
+      font-size: 0.8125rem;
+      color: var(--muted-foreground);
+      line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+    .danger-error {
+      font-size: 0.8125rem;
+      color: var(--destructive);
+      background: color-mix(in srgb, var(--destructive) 10%, transparent);
+      padding: 0.5rem 0.75rem;
+      border-radius: calc(var(--radius) - 2px);
+      margin-bottom: 1rem;
+    }
+    .btn-danger {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--destructive);
+      background: var(--destructive);
+      color: var(--destructive-foreground, #fff);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    .btn-danger:hover:not(:disabled) { filter: brightness(0.92); }
+    .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel {
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--foreground);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-cancel:hover:not(:disabled) { background: var(--secondary); }
+    .delete-form { display: flex; flex-direction: column; gap: 0.5rem; }
+    .delete-label { font-size: 0.8125rem; color: var(--foreground); }
+    .delete-label code {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--secondary);
+      padding: 0.125rem 0.375rem;
+      border-radius: 4px;
+    }
+    .delete-input {
+      padding: 0.5rem 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      background: var(--input-background, var(--background));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--foreground);
+    }
+    .delete-input:focus {
+      outline: none;
+      border-color: var(--destructive);
+    }
+    .delete-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
   `],
 })
 export class ProfileComponent implements OnInit {
   private readonly dashService = inject(DashboardService);
+  private readonly accountService = inject(AccountService);
 
   readonly profile = signal<UserProfile | null>(null);
   readonly dashData = signal<DashboardData | null>(null);
+  readonly showDeleteForm = signal(false);
+  readonly confirmInput = signal('');
+  readonly deleting = signal(false);
+  readonly deleteError = signal<string | null>(null);
 
   ngOnInit(): void {
     this.dashService.getProfile().subscribe(p => this.profile.set(p));
@@ -291,6 +422,34 @@ export class ProfileComponent implements OnInit {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+    });
+  }
+
+  cancelDelete(): void {
+    this.showDeleteForm.set(false);
+    this.confirmInput.set('');
+    this.deleteError.set(null);
+  }
+
+  confirmDelete(): void {
+    if (this.confirmInput() !== 'DELETE' || this.deleting()) return;
+    this.deleting.set(true);
+    this.deleteError.set(null);
+    this.accountService.deleteLocalData().subscribe({
+      next: () => {
+        // DSV-side data cascaded. Hand off to Keycloak so the user removes
+        // the IdP account themselves. The Keycloak page redirects back to
+        // postLogoutRedirectUri after confirmation.
+        window.location.assign(this.accountService.keycloakDeleteAccountUrl());
+      },
+      error: (err: HttpErrorResponse) => {
+        this.deleting.set(false);
+        if (err.status === 409 && typeof err.error === 'object' && err.error?.message) {
+          this.deleteError.set(err.error.message);
+        } else {
+          this.deleteError.set("Échec de la suppression. Réessayez ou contactez l'abuse mailbox.");
+        }
+      },
     });
   }
 }
