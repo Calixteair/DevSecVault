@@ -450,13 +450,32 @@
     border-color: var(--dsv-muted-foreground);
 }
 
-/* ---- Altcha widget ---- */
+/* ---- Altcha widget ----
+   Variables actually consumed by altcha@3.x (see widget source). The widget
+   ships with light defaults; we override every relevant token to align with
+   the DevSec dark palette and the surrounding fields. */
 .dsv-altcha {
     --altcha-color-base: var(--dsv-input-background);
-    --altcha-color-border: var(--dsv-border);
-    --altcha-color-text: var(--dsv-foreground);
-    --altcha-color-border-focus: var(--dsv-primary);
+    --altcha-color-base-content: var(--dsv-foreground);
+    --altcha-color-neutral: var(--dsv-input-background);
+    --altcha-color-neutral-content: var(--dsv-muted-foreground);
+    --altcha-color-primary: var(--dsv-primary);
+    --altcha-color-primary-content: var(--dsv-primary-foreground);
+    --altcha-color-success: var(--dsv-primary);
+    --altcha-color-success-content: var(--dsv-primary-foreground);
+    --altcha-color-error: var(--dsv-destructive);
+    --altcha-color-error-content: var(--dsv-destructive-foreground);
+    --altcha-border-color: var(--dsv-border);
     --altcha-border-radius: var(--dsv-radius);
+    --altcha-border-width: 1px;
+    --altcha-input-background-color: var(--dsv-input-background);
+    --altcha-input-color: var(--dsv-foreground);
+    --altcha-input-border-radius: var(--dsv-radius);
+    --altcha-input-border-width: 1px;
+    --altcha-checkbox-border-color: var(--dsv-border);
+    --altcha-checkbox-border-radius: 4px;
+    --altcha-max-width: 100%;
+    --altcha-padding: 0.625rem 0.75rem;
 }
 
 .dsv-altcha altcha-widget {

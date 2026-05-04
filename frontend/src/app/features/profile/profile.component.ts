@@ -325,23 +325,32 @@ const icons = { User, Mail, Shield, Crown, Users, Calendar, Code, Wrench, Send, 
       padding: 3rem 0;
     }
 
-    /* Danger zone */
+    /* Danger zone — separated visually from the rest of the profile cards */
     .danger-zone {
       grid-column: 1 / -1;
-      border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
-      background: color-mix(in srgb, var(--destructive) 4%, var(--card));
+      margin-top: 1.5rem;
+      border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+      background: color-mix(in srgb, var(--destructive) 3%, var(--card));
     }
-    .danger-title { color: var(--destructive); }
+    .danger-title {
+      color: var(--destructive);
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.8125rem;
+    }
     .danger-help {
       font-size: 0.8125rem;
       color: var(--muted-foreground);
-      line-height: 1.5;
+      line-height: 1.55;
       margin-bottom: 1rem;
     }
+    .danger-help strong { color: var(--foreground); font-weight: 600; }
     .danger-error {
       font-size: 0.8125rem;
       color: var(--destructive);
       background: color-mix(in srgb, var(--destructive) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--destructive) 30%, transparent);
       padding: 0.5rem 0.75rem;
       border-radius: calc(var(--radius) - 2px);
       margin-bottom: 1rem;
@@ -354,7 +363,7 @@ const icons = { User, Mail, Shield, Crown, Users, Calendar, Code, Wrench, Send, 
       border-radius: var(--radius);
       border: 1px solid var(--destructive);
       background: var(--destructive);
-      color: var(--destructive-foreground, #fff);
+      color: var(--destructive-foreground);
       font-size: 0.8125rem;
       font-weight: 600;
       cursor: pointer;
@@ -371,30 +380,40 @@ const icons = { User, Mail, Shield, Crown, Users, Calendar, Code, Wrench, Send, 
       font-size: 0.8125rem;
       font-weight: 500;
       cursor: pointer;
+      transition: background-color 0.15s ease;
     }
     .btn-cancel:hover:not(:disabled) { background: var(--secondary); }
-    .delete-form { display: flex; flex-direction: column; gap: 0.5rem; }
+    .delete-form { display: flex; flex-direction: column; gap: 0.625rem; }
     .delete-label { font-size: 0.8125rem; color: var(--foreground); }
     .delete-label code {
       font-family: 'JetBrains Mono', monospace;
       background: var(--secondary);
+      color: var(--destructive);
       padding: 0.125rem 0.375rem;
       border-radius: 4px;
+      font-weight: 600;
     }
     .delete-input {
       padding: 0.5rem 0.75rem;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.875rem;
-      background: var(--input-background, var(--background));
+      background: var(--input-background);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       color: var(--foreground);
+      transition: border-color 0.15s ease;
     }
     .delete-input:focus {
       outline: none;
       border-color: var(--destructive);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 18%, transparent);
     }
-    .delete-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+    .delete-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
   `],
 })
 export class ProfileComponent implements OnInit {
