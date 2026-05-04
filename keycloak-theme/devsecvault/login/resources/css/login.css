@@ -450,6 +450,20 @@
     border-color: var(--dsv-muted-foreground);
 }
 
+/* ---- Altcha widget ---- */
+.dsv-altcha {
+    --altcha-color-base: var(--dsv-input-background);
+    --altcha-color-border: var(--dsv-border);
+    --altcha-color-text: var(--dsv-foreground);
+    --altcha-color-border-focus: var(--dsv-primary);
+    --altcha-border-radius: var(--dsv-radius);
+}
+
+.dsv-altcha altcha-widget {
+    display: block;
+    width: 100%;
+}
+
 /* ---- Override Keycloak default classes ---- */
 .kc-form-card, .login-pf-page, #kc-header, #kc-content, #kc-form {
     all: unset;

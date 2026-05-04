@@ -109,10 +109,20 @@
                 </div>
             </#if>
 
-            <#if recaptchaRequired??>
-                <div class="dsv-field">
-                    <div class="g-recaptcha" data-size="compact" data-sitekey="${recaptchaSiteKey}"></div>
+            <#if altchaRequired??>
+                <div class="dsv-field dsv-altcha">
+                    <altcha-widget
+                        challenge="${altchaChallengeJson}"
+                        name="altcha"
+                        auto="onsubmit"
+                        hidefooter
+                        hidelogo>
+                    </altcha-widget>
+                    <#if messagesPerField.existsError('altcha')>
+                        <span class="dsv-error">${kcSanitize(messagesPerField.get('altcha'))?no_esc}</span>
+                    </#if>
                 </div>
+                <script src="${url.resourcesPath}/js/altcha.min.js" defer></script>
             </#if>
 
             <div class="dsv-field dsv-terms">
