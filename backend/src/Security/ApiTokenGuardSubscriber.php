@@ -15,6 +15,9 @@ use Symfony\Component\RateLimiter\RateLimiterFactory;
 /**
  * Enforces PAT-only restrictions:
  *  - PUT and PATCH are forbidden (CLI clients are limited to create / read / delete)
+ *  - DELETE /api/users/me is forbidden — account self-deletion must be done from a
+ *    fresh Keycloak browser session (high-impact, irreversible). A stolen PAT
+ *    should not be enough to wipe the owner's account.
  *  - /api/admin/* is forbidden unless the token was minted with `includeAdmin = true`
  *  - 60 requests / minute per token (sliding window) — returns 429 with Retry-After
  *
@@ -60,6 +63,15 @@ final readonly class ApiTokenGuardSubscriber implements EventSubscriberInterface
         }
 
         $path = $request->getPathInfo();
+
+        if ($method === 'DELETE' && $path === '/api/users/me') {
+            $event->setResponse(new JsonResponse(
+                ['error' => 'Account self-deletion is only allowed from an interactive browser session.'],
+                Response::HTTP_FORBIDDEN,
+            ));
+            return;
+        }
+
         $includeAdmin = (bool) $request->attributes->get(ApiTokenHandler::REQUEST_ATTR_PAT_INCLUDE_ADMIN, false);
 
         if (!$includeAdmin && str_starts_with($path, '/api/admin')) {
