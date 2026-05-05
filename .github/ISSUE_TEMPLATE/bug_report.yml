@@ -1,0 +1,63 @@
+name: 🐛 Bug report
+description: Signaler un bug fonctionnel sur DevSecVault
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci pour votre signalement !
+
+        ⚠️ **Si c'est une vulnérabilité de sécurité**, ne l'ouvrez pas ici. Voir [`SECURITY.md`](../blob/master/SECURITY.md) → email à `dsvabuse@calixteair.fr`.
+
+  - type: input
+    id: where
+    attributes:
+      label: Où ?
+      description: Sur l'instance publique `vault.calixteair.fr` ou un fork local ?
+      placeholder: vault.calixteair.fr / fork local / les deux
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Que se passe-t-il ?
+      description: Décrivez le comportement observé
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Aller sur `/dev-library`
+        2. Cliquer sur ...
+        3. Voir l'erreur
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environnement
+      placeholder: |
+        - Navigateur : Firefox 134 / Chrome 132
+        - OS : Linux / macOS / Windows
+        - Connecté ? oui / non
+    validations:
+      required: false
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Logs / console / network
+      description: Erreurs JS dans la DevTools console, ou body de réponse API anormal
+      render: shell

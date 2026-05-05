@@ -36,3 +36,13 @@ frontend/.angular/
 # ---- Data volumes (if accidentally placed in repo) ----
 postgres_data/
 meili_data/
+
+# Internal docs (kept local only)
+PRESENTATION.md
+
+# External tools & specs (not part of DSV codebase)
+.ai/
+shannon/
+
+# Internal security audit (kept local, contains historical findings already fixed)
+SECURITY_AUDIT_REPORT.md

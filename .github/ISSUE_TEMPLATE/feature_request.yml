@@ -1,0 +1,57 @@
+name: 💡 Feature request
+description: Proposer une nouvelle fonctionnalité ou amélioration
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Avant de proposer, vérifiez le [cahier des charges (`CC.md`)](../blob/master/CC.md) pour vous assurer que la feature est dans le scope du projet.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Quel problème la feature résout-elle ?
+      description: Décrivez l'usage réel, pas la solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution proposée
+      description: Comment vous voyez l'implémentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées
+    validations:
+      required: false
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module concerné
+      options:
+        - Dev Library (snippets)
+        - Cyber Toolbox (payloads)
+        - Secure Bridge (E2E secrets)
+        - IT Tools (utilitaires client)
+        - Teams (partage)
+        - Auth / Keycloak / Altcha
+        - Admin (modération)
+        - Frontend (layout, design, SEO)
+        - Backend (API, infra)
+        - Documentation
+        - Autre
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contrib
+    attributes:
+      label: Contribution
+      options:
+        - label: Je suis prêt(e) à proposer une PR pour cette feature

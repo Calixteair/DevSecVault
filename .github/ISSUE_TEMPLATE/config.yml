@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Vulnérabilité de sécurité
+    url: https://github.com/Calixteair/DevSecVault/blob/master/SECURITY.md
+    about: NE PAS ouvrir d'issue publique. Voir SECURITY.md → email dsvabuse@calixteair.fr.
+  - name: 💬 Discussion / question
+    url: https://github.com/Calixteair/DevSecVault/discussions
+    about: Pour les questions ouvertes, suggestions de design, ou retours d'usage.
+  - name: 📚 Documentation utilisateur
+    url: https://vault.calixteair.fr
+    about: La démo live et les pages légales détaillent les fonctionnalités.
