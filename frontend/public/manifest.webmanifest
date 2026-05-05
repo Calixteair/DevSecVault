@@ -1,0 +1,17 @@
+{
+  "name": "DevSecVault",
+  "short_name": "DSV",
+  "description": "Coffre-fort cybersec auto-hébergé : snippets, payloads chiffrés, secret share E2E.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "fr-FR",
+  "theme_color": "#101012",
+  "background_color": "#101012",
+  "icons": [
+    { "src": "/icons/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}

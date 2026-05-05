@@ -42,6 +42,7 @@ import { TagPillComponent } from '../../shared/components/tag-pill/tag-pill.comp
 import { AuthService } from '../../core/services/auth.service';
 import { PayloadService } from '../../core/services/payload.service';
 import { TeamService } from '../../core/services/team.service';
+import { SeoService } from '../../core/services/seo.service';
 import {
   Payload,
   PayloadCategory,
@@ -980,6 +981,7 @@ export class CyberToolboxComponent implements OnInit {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
+  private readonly seo = inject(SeoService);
 
   readonly categories = CATEGORIES;
 
@@ -1146,6 +1148,10 @@ export class CyberToolboxComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.seo.apply({
+      title: 'Cyber Toolbox — Payloads & scripts pentest chiffrés',
+      description: 'Catalogue de payloads, scripts pentest et générateurs de commandes (Nmap, MSFVenom). Contenu chiffré AES-256-GCM en base, recherche par catégorie et tags.',
+    });
     if (isPlatformBrowser(this.platformId)) {
       this.loadPayloads();
       this.route.queryParamMap.subscribe(pm => {

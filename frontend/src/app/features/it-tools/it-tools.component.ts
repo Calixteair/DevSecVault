@@ -1,8 +1,9 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider } from 'lucide-angular';
 import * as Lucide from 'lucide-angular';
 import { CATEGORIES, TOOLS, ToolCategory } from './tools.catalog';
+import { SeoService } from '../../core/services/seo.service';
 
 // Icons needed by this grid view AND by the tool cards.
 // Registering them here avoids per-tool providers (all tool cards render here).
@@ -480,11 +481,20 @@ const CATEGORY_ICONS: Record<ToolCategory, string> = {
     }
   `],
 })
-export class ItToolsComponent {
+export class ItToolsComponent implements OnInit {
+  private readonly seo = inject(SeoService);
+
   readonly categories = CATEGORIES;
   readonly totalCount = TOOLS.length;
   readonly query = signal('');
   readonly activeCategory = signal<ToolCategory | null>(null);
+
+  ngOnInit(): void {
+    this.seo.apply({
+      title: 'IT Tools — Utilitaires développeur 100 % côté client',
+      description: `Catalogue de ${TOOLS.length} outils pour développeurs : encodage, conversion, calcul de sous-réseau, formatters JSON / YAML, hash. Tout tourne dans votre navigateur, aucune donnée n'est envoyée.`,
+    });
+  }
 
   readonly filteredTools = computed(() => {
     const q = this.query().trim().toLowerCase();

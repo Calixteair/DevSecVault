@@ -2,6 +2,13 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
+  // Public landing — full-bleed marketing page outside the app layout
+  // (no sidebar/topbar). Indexed by search engines.
+  {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () => import('./features/landing/landing.component').then(m => m.LandingComponent),
+  },
   // Public Secure Bridge viewer — lives OUTSIDE the main layout so recipients
   // (including guests) see a minimalist page without sidebar/topbar.
   {
@@ -39,7 +46,6 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
@@ -97,5 +103,5 @@ export const routes: Routes = [
       },
     ],
   },
-  { path: '**', redirectTo: 'dashboard' },
+  { path: '**', redirectTo: '' },
 ];

@@ -10,7 +10,7 @@ import { LegalShellComponent } from './legal-shell.component';
   standalone: true,
   imports: [LegalShellComponent, RouterLink],
   template: `
-    <app-legal-shell title="Signalement de contenu (DSA)">
+    <app-legal-shell title="Signalement de contenu (DSA)" description="Procédure de signalement DSA / LCEN sur DevSecVault : contenus interdits, comment signaler, délai de traitement, recours.">
       <h2>Procédure de signalement</h2>
       <p>
         Conformément au règlement européen sur les services numériques

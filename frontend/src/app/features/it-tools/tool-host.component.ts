@@ -1,6 +1,7 @@
 import { Component, Type, ViewContainerRef, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { findTool } from './tools.catalog';
+import { SeoService } from '../../core/services/seo.service';
 
 /**
  * Route component for /it-tools/:slug.
@@ -31,6 +32,7 @@ import { findTool } from './tools.catalog';
 export class ToolHostComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly seo = inject(SeoService);
   private readonly slot = viewChild.required('slot', { read: ViewContainerRef });
 
   readonly loading = signal(true);
@@ -44,6 +46,11 @@ export class ToolHostComponent {
         this.router.navigate(['/it-tools']);
         return;
       }
+      this.seo.apply({
+        title: `${def.title} — IT Tools`,
+        description: `${def.description} Outil 100 % côté navigateur, aucune donnée n'est envoyée au serveur.`,
+        path: `/it-tools/${slug}`,
+      });
       this.loading.set(true);
       const component = await def.load();
       const vc = this.slot();

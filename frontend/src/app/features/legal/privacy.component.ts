@@ -10,7 +10,7 @@ import { LegalShellComponent } from './legal-shell.component';
   standalone: true,
   imports: [LegalShellComponent, RouterLink],
   template: `
-    <app-legal-shell title="Politique de confidentialité">
+    <app-legal-shell title="Politique de confidentialité" description="Politique de confidentialité RGPD de DevSecVault : données collectées, finalités, conservation, droits des utilisateurs, hébergement Hostinger France.">
       <h2>Préambule</h2>
       <p>
         DevSecVault traite des données personnelles dans le respect du

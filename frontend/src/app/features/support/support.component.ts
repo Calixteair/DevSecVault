@@ -15,7 +15,7 @@ import { LegalShellComponent } from '../legal/legal-shell.component';
   standalone: true,
   imports: [LegalShellComponent, RouterLink],
   template: `
-    <app-legal-shell title="Soutenir le projet" [draft]="false">
+    <app-legal-shell title="Soutenir le projet" description="Soutenez DevSecVault avec un don PayPal libre. Le projet est auto-hébergé, non commercial : les dons couvrent uniquement VPS, domaine et certificats." [draft]="false">
       <h2>Pourquoi soutenir ?</h2>
       <p>
         DevSecVault est un projet personnel auto-hébergé, sans publicité,

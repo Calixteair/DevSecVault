@@ -1,6 +1,7 @@
-import { Component, input } from '@angular/core';
+import { Component, OnInit, effect, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FooterComponent } from '../../layout/footer/footer.component';
+import { SeoService } from '../../core/services/seo.service';
 
 /**
  * Visual shell shared by every /legal/* page. Centers the content inside a
@@ -160,6 +161,18 @@ import { FooterComponent } from '../../layout/footer/footer.component';
   `],
 })
 export class LegalShellComponent {
+  private readonly seo = inject(SeoService);
+
   readonly title = input.required<string>();
   readonly draft = input<boolean>(true);
+  readonly description = input<string | undefined>();
+
+  constructor() {
+    effect(() => {
+      this.seo.apply({
+        title: this.title(),
+        description: this.description(),
+      });
+    });
+  }
 }

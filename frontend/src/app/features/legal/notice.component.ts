@@ -10,7 +10,7 @@ import { LegalShellComponent } from './legal-shell.component';
   standalone: true,
   imports: [LegalShellComponent, RouterLink],
   template: `
-    <app-legal-shell title="Mentions légales">
+    <app-legal-shell title="Mentions légales" description="Mentions légales de DevSecVault : éditeur, hébergeur, contact, directeur de la publication.">
       <h2>Éditeur</h2>
       <p>
         Calixte Reymond, particulier non professionnel, étudiant en

@@ -19,6 +19,7 @@ import {
 } from 'lucide-angular';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
+import { SeoService } from '../../core/services/seo.service';
 import { DashboardData, ActivityItem } from '../../core/models/dashboard.model';
 
 const icons = { Code, Wrench, Send, Hammer, Users, Shield, Clock, ArrowRight, FileCode, Plus, Activity };
@@ -391,11 +392,17 @@ export class DashboardComponent implements OnInit {
   private readonly dashboardService = inject(DashboardService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly seo = inject(SeoService);
 
   readonly isAuthenticated = toSignal(this.auth.isAuthenticated$, { initialValue: false });
   readonly data = signal<DashboardData | null>(null);
 
   ngOnInit(): void {
+    this.seo.apply({
+      title: 'Tableau de bord',
+      description: 'Tableau de bord DevSecVault : vos statistiques, activité récente et accès rapide aux modules Dev Library, Cyber Toolbox et Secure Bridge.',
+      noindex: true,
+    });
     if (this.isAuthenticated()) {
       this.loadDashboard();
     }

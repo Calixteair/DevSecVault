@@ -12,7 +12,7 @@ import { LegalShellComponent } from './legal-shell.component';
   standalone: true,
   imports: [LegalShellComponent, RouterLink],
   template: `
-    <app-legal-shell title="Conditions générales d'utilisation">
+    <app-legal-shell title="Conditions générales d'utilisation" description="Conditions générales d'utilisation de DevSecVault : engagements, contenus interdits, modération, responsabilité éditoriale, droit français.">
       <h2>Préambule</h2>
       <p>
         DevSecVault est une plateforme web de partage de connaissances en

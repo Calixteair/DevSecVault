@@ -19,6 +19,7 @@ import { ConceptSidebarComponent } from './concept-sidebar.component';
 import { ConceptEditorComponent, ConceptEditPayload } from './concept-editor.component';
 import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 import { ConceptService } from '../../core/services/concept.service';
+import { SeoService } from '../../core/services/seo.service';
 import { AuthService } from '../../core/services/auth.service';
 import { TeamService } from '../../core/services/team.service';
 import {
@@ -684,6 +685,7 @@ export class DevLibraryComponent implements OnInit {
   readonly teamService = inject(TeamService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
+  private readonly seo = inject(SeoService);
 
   readonly concepts = signal<ConceptListItem[]>([]);
   readonly selectedConcept = signal<Concept | null>(null);
@@ -783,6 +785,10 @@ export class DevLibraryComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.seo.apply({
+      title: 'Dev Library — Snippets cybersec multi-langages',
+      description: 'Bibliothèque collaborative de snippets cybersécurité : exploits, scripts pentest, code défensif. Multi-langages avec templating de variables côté navigateur.',
+    });
     if (isPlatformBrowser(this.platformId)) {
       this.loadConcepts();
       this.route.queryParamMap.subscribe(pm => {
