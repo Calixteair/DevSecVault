@@ -411,8 +411,8 @@ export class ReportDialogComponent {
   // The dropdown is ordered by perceived severity: outright illegal stuff
   // first, lower-stakes options after.
   readonly reasonOptions: ReasonOption[] = [
-    { value: 'illegal', label: 'Contenu illégal' },
-    { value: 'malware', label: 'Malware ciblé' },
+    { value: 'illegal_content', label: 'Contenu illégal' },
+    { value: 'malware_distribution', label: 'Malware ciblé' },
     { value: 'phishing', label: 'Phishing actif' },
     { value: 'csam', label: 'Contenu pédopornographique' },
     { value: 'terrorism', label: 'Apologie du terrorisme' },
@@ -421,7 +421,7 @@ export class ReportDialogComponent {
     { value: 'other', label: 'Autre' },
   ];
 
-  reason: ReportReason = 'illegal';
+  reason: ReportReason = 'illegal_content';
   details = '';
   readonly submitting = signal(false);
   readonly success = signal(false);

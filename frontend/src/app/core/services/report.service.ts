@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
   AdminReport,
@@ -46,7 +47,9 @@ export class ReportService {
   /** Admin-only: list reports, optionally filtered by status (default pending). */
   listAdmin(status: ReportStatus = 'pending'): Observable<AdminReport[]> {
     const params = new HttpParams().set('status', status);
-    return this.http.get<AdminReport[]>(this.adminUrl, { params });
+    return this.http
+      .get<{ items: AdminReport[]; count: number }>(this.adminUrl, { params })
+      .pipe(map(r => r.items ?? []));
   }
 
   /** Admin-only: resolve a report with one of dismiss/hide/remove/ban_user. */

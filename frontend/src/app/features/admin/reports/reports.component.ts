@@ -27,8 +27,8 @@ import {
 const icons = { AlertTriangle, Ban, EyeOff, Flag, Shield, Trash2, X };
 
 const REASON_LABELS: Record<ReportReason, string> = {
-  illegal: 'Contenu illégal',
-  malware: 'Malware ciblé',
+  illegal_content: 'Contenu illégal',
+  malware_distribution: 'Malware ciblé',
   phishing: 'Phishing actif',
   csam: 'Pédopornographie',
   terrorism: 'Apologie terrorisme',
@@ -45,10 +45,9 @@ const TARGET_LABELS: Record<ReportTargetType, string> = {
 
 const STATUS_LABELS: Record<ReportStatus, string> = {
   pending: 'En attente',
+  reviewed: 'En cours',
   dismissed: 'Rejeté',
-  hidden: 'Masqué',
-  removed: 'Supprimé',
-  banned: 'Bannissement',
+  actioned: 'Action prise',
 };
 
 interface ResolutionDraft {
@@ -211,7 +210,7 @@ interface ResolutionDraft {
                       type="button"
                       class="btn btn-danger-strong"
                       (click)="resolve(r, 'ban_user')"
-                      [disabled]="busyId() === r.id || !r.reporter"
+                      [disabled]="busyId() === r.id || !canBan(r)"
                       [title]="banButtonTitle(r)"
                     >
                       <lucide-icon name="ban" [size]="14" [strokeWidth]="2"></lucide-icon>
@@ -523,7 +522,7 @@ interface ResolutionDraft {
 export class AdminReportsComponent implements OnInit {
   private readonly reportService = inject(ReportService);
 
-  readonly statusTabs: ReportStatus[] = ['pending', 'dismissed', 'hidden', 'removed', 'banned'];
+  readonly statusTabs: ReportStatus[] = ['pending', 'dismissed', 'actioned'];
 
   readonly status = signal<ReportStatus>('pending');
   readonly reports = signal<AdminReport[]>([]);
@@ -610,10 +609,17 @@ export class AdminReportsComponent implements OnInit {
     return STATUS_LABELS[status] ?? status;
   }
 
+  canBan(r: AdminReport): boolean {
+    return !!r.target_preview?.owner_id;
+  }
+
   banButtonTitle(r: AdminReport): string {
-    return r.reporter
-      ? 'Bannir le compte signalé'
-      : "Pas d'utilisateur à bannir (signalement anonyme)";
+    if (!r.target_preview) {
+      return 'Cible supprimée — bannissement impossible';
+    }
+    return this.canBan(r)
+      ? 'Bannir le propriétaire de la ressource signalée'
+      : "Aucun propriétaire à bannir";
   }
 
   formatDate(iso: string): string {

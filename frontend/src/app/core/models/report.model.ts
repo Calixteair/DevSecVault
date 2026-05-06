@@ -15,8 +15,8 @@ export type ReportTargetType = 'concept' | 'snippet' | 'payload';
  * report dialog.
  */
 export type ReportReason =
-  | 'illegal'
-  | 'malware'
+  | 'illegal_content'
+  | 'malware_distribution'
   | 'phishing'
   | 'copyright'
   | 'spam'
@@ -24,8 +24,8 @@ export type ReportReason =
   | 'terrorism'
   | 'other';
 
-/** Lifecycle status used by the admin reports page. */
-export type ReportStatus = 'pending' | 'dismissed' | 'hidden' | 'removed' | 'banned';
+/** Lifecycle status used by the admin reports page. Matches the four backend states. */
+export type ReportStatus = 'pending' | 'reviewed' | 'dismissed' | 'actioned';
 
 /** Action sent on POST /api/admin/reports/:id/resolve. */
 export type ReportResolveAction = 'dismiss' | 'hide' | 'remove' | 'ban_user';
@@ -34,6 +34,7 @@ export type ReportResolveAction = 'dismiss' | 'hide' | 'remove' | 'ban_user';
 export interface ReportTargetPreview {
   title?: string | null;
   description?: string | null;
+  owner_id?: string | null;
 }
 
 /** Light snapshot of the reporter shown to the moderator. */
