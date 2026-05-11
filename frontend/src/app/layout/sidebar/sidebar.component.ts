@@ -14,19 +14,26 @@ import {
   Shield,
   User,
   Users,
+  LogIn,
+  ChevronRight,
 } from 'lucide-angular';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService, UserProfile } from '../../core/services/auth.service';
 
-const icons = { LayoutDashboard, Code, Wrench, Send, Hammer, Settings, Shield, User, Users };
+const icons = { LayoutDashboard, Code, Wrench, Send, Hammer, Settings, Shield, User, Users, LogIn, ChevronRight };
 
 interface NavItem {
   path: string;
   icon: string;
   label: string;
+  kbd?: string;
   requiresAuth?: boolean;
   requiresAdmin?: boolean;
-  /** If true, shown in the mobile bottom bar (max ~5 items). */
   mobile?: boolean;
+}
+
+interface NavSection {
+  label: string;
+  items: NavItem[];
 }
 
 @Component({
@@ -36,38 +43,61 @@ interface NavItem {
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
   template: `
-    <!-- Desktop sidebar -->
-    <nav class="sidebar desktop-only">
-      <div class="sidebar-top">
-        <a routerLink="/dashboard" class="logo">D</a>
-      </div>
+    <!-- ============ Desktop sidebar ============ -->
+    <aside class="sidebar desktop-only" aria-label="Navigation principale">
+      <!-- Prompt logo -->
+      <a routerLink="/dashboard" class="brand">
+        <span class="brand-prompt font-mono">&gt;&gt;</span><span class="brand-name font-mono">dsv</span><span class="brand-caret caret" aria-hidden="true"></span>
+      </a>
 
-      <div class="sidebar-nav">
-        @for (item of visibleNavItems(); track item.path) {
-          <a
-            [routerLink]="item.path"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: item.path === '/dashboard' }"
-            class="nav-item"
-            [attr.title]="item.label"
-          >
-            <lucide-icon [name]="item.icon" [size]="20" [strokeWidth]="2"></lucide-icon>
-          </a>
+      <nav class="nav">
+        @for (section of visibleSections(); track section.label) {
+          <div class="nav-section">
+            <div class="nav-section-label font-mono">{{ section.label }}</div>
+            @for (item of section.items; track item.path) {
+              <a
+                [routerLink]="item.path"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: item.path === '/dashboard' }"
+                class="nav-item"
+              >
+                <lucide-icon [name]="item.icon" [size]="15" [strokeWidth]="1.75" class="nav-icon"></lucide-icon>
+                <span class="nav-label">{{ item.label }}</span>
+                @if (item.kbd) {
+                  <kbd class="nav-kbd">{{ item.kbd }}</kbd>
+                }
+              </a>
+            }
+          </div>
+        }
+      </nav>
+
+      <!-- Bottom user block -->
+      <div class="nav-foot">
+        @if (isAuthenticated()) {
+          @let user = userData();
+          @if (user !== null) {
+            <a routerLink="/profile" class="user-card">
+              <span class="user-avatar font-mono">{{ initials(user.username) }}</span>
+              <span class="user-meta">
+                <span class="user-name">{{ user.username }}</span>
+                <span class="user-role font-mono">{{ roleTag(user) }}</span>
+              </span>
+              <lucide-icon name="chevron-right" [size]="14" [strokeWidth]="1.75" class="user-chev"></lucide-icon>
+            </a>
+          }
+        } @else {
+          <button class="login-cta" (click)="auth.login()">
+            <lucide-icon name="log-in" [size]="14" [strokeWidth]="1.75"></lucide-icon>
+            <span>Login</span>
+            <kbd class="nav-kbd">⌘L</kbd>
+          </button>
         }
       </div>
+    </aside>
 
-      <div class="sidebar-bottom">
-        <a routerLink="/settings" routerLinkActive="active" class="nav-item" title="Settings">
-          <lucide-icon name="settings" [size]="20" [strokeWidth]="2"></lucide-icon>
-        </a>
-        <a routerLink="/profile" routerLinkActive="active" class="nav-item" title="Profile">
-          <lucide-icon name="user" [size]="20" [strokeWidth]="2"></lucide-icon>
-        </a>
-      </div>
-    </nav>
-
-    <!-- Mobile bottom tab bar -->
-    <nav class="bottom-bar mobile-only">
+    <!-- ============ Mobile bottom tab bar ============ -->
+    <nav class="bottom-bar mobile-only" aria-label="Navigation mobile">
       @for (item of mobileNavItems(); track item.path) {
         <a
           [routerLink]="item.path"
@@ -75,75 +105,246 @@ interface NavItem {
           [routerLinkActiveOptions]="{ exact: item.path === '/dashboard' }"
           class="bottom-item"
         >
-          <lucide-icon [name]="item.icon" [size]="20" [strokeWidth]="2"></lucide-icon>
-          <span class="bottom-label">{{ item.label }}</span>
+          <lucide-icon [name]="item.icon" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          <span class="bottom-label font-mono">{{ item.label }}</span>
         </a>
       }
     </nav>
   `,
   styles: [`
-    /* ---- Desktop sidebar ---- */
+    /* ============ Desktop sidebar ============ */
     .sidebar {
-      width: 4rem;
-      min-width: 4rem;
+      width: 14rem;
+      min-width: 14rem;
       height: 100dvh;
       background: var(--sidebar);
       border-right: 1px solid var(--sidebar-border);
       display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 0.75rem 0;
-    }
-    .sidebar-top { margin-bottom: 1.5rem; }
-    .logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.25rem;
-      height: 2.25rem;
-      background: var(--primary);
-      color: var(--primary-foreground);
-      border-radius: var(--radius);
-      font-weight: 700;
-      font-size: 1rem;
-      text-decoration: none;
-    }
-    .sidebar-nav {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.25rem;
-      flex: 1;
-    }
-    .nav-item {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: var(--radius);
-      color: var(--muted-foreground);
-      text-decoration: none;
-      cursor: pointer;
-      transition: background-color 0.15s ease, color 0.15s ease;
-    }
-    .nav-item:hover {
-      background: var(--secondary);
-      color: var(--secondary-foreground);
-    }
-    .nav-item.active {
-      background: var(--primary);
-      color: var(--primary-foreground);
-    }
-    .sidebar-bottom {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.25rem;
-      margin-top: auto;
+      padding: 1rem 0.625rem 0.875rem;
+      position: relative;
     }
 
-    /* ---- Mobile bottom bar ---- */
+    /* Subtle vertical line on the right edge for terminal feel */
+    .sidebar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 1px;
+      height: 100%;
+      background: linear-gradient(180deg,
+        transparent 0%,
+        var(--border) 8%,
+        var(--border) 92%,
+        transparent 100%);
+    }
+
+    /* ---- Brand prompt ---- */
+    .brand {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.375rem;
+      padding: 0.5rem 0.5rem 0.875rem;
+      color: var(--foreground);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+    .brand-prompt {
+      color: var(--primary);
+      font-weight: 700;
+    }
+    .brand-name {
+      color: var(--foreground);
+      font-weight: 600;
+    }
+    .brand-caret {
+      color: var(--primary);
+      font-size: 0.9375rem;
+      line-height: 1;
+    }
+
+    /* ---- Nav ---- */
+    .nav {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow-y: auto;
+      padding-top: 0.25rem;
+    }
+    .nav-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+    .nav-section-label {
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: var(--foreground-subtle);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 0.375rem 0.5rem 0.25rem;
+    }
+
+    .nav-item {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1rem 1fr auto;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.4375rem 0.625rem;
+      color: var(--foreground-muted);
+      font-size: 0.8125rem;
+      letter-spacing: -0.005em;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background-color 120ms var(--ease), color 120ms var(--ease);
+    }
+    .nav-item::before {
+      content: '';
+      position: absolute;
+      left: -0.625rem;
+      top: 50%;
+      width: 2px;
+      height: 0;
+      background: var(--primary);
+      border-radius: 0 2px 2px 0;
+      transform: translateY(-50%);
+      transition: height 180ms var(--ease);
+    }
+    .nav-item:hover {
+      background: var(--surface-2);
+      color: var(--foreground);
+    }
+    .nav-item.active {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+    .nav-item.active::before { height: 1.125rem; }
+    .nav-item.active .nav-icon { color: var(--primary); }
+    .nav-item.active .nav-kbd {
+      background: var(--primary-soft-strong);
+      border-color: transparent;
+      color: var(--primary);
+    }
+
+    .nav-icon {
+      color: var(--foreground-subtle);
+      transition: color 120ms var(--ease);
+    }
+    .nav-item:hover .nav-icon { color: var(--foreground); }
+
+    .nav-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav-kbd {
+      min-width: 1.5rem;
+      height: 1.125rem;
+      padding: 0 0.3125rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: var(--radius-sm);
+      color: var(--foreground-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ---- Bottom user / login ---- */
+    .nav-foot {
+      padding-top: 0.625rem;
+      margin-top: 0.5rem;
+      border-top: 1px dashed var(--border);
+    }
+    .user-card {
+      display: grid;
+      grid-template-columns: 1.75rem 1fr auto;
+      align-items: center;
+      gap: 0.625rem;
+      width: 100%;
+      padding: 0.5rem 0.5rem;
+      border-radius: var(--radius);
+      color: var(--foreground);
+      transition: background-color 120ms var(--ease);
+    }
+    .user-card:hover { background: var(--surface-2); }
+    .user-avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      background: var(--primary-soft-strong);
+      color: var(--primary);
+      border-radius: var(--radius-sm);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .user-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .user-name {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--foreground);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .user-role {
+      font-size: 0.625rem;
+      color: var(--foreground-subtle);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .user-chev {
+      color: var(--foreground-subtle);
+      transition: transform 180ms var(--ease), color 120ms var(--ease);
+    }
+    .user-card:hover .user-chev {
+      color: var(--primary);
+      transform: translateX(2px);
+    }
+
+    .login-cta {
+      display: grid;
+      grid-template-columns: 1rem 1fr auto;
+      align-items: center;
+      gap: 0.625rem;
+      width: 100%;
+      padding: 0.5rem 0.625rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      color: var(--foreground);
+      font-family: inherit;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 120ms var(--ease), border-color 120ms var(--ease), color 120ms var(--ease);
+    }
+    .login-cta:hover {
+      background: var(--primary-soft);
+      border-color: var(--primary-soft-strong);
+      color: var(--primary);
+    }
+
+    /* ============ Mobile bottom bar ============ */
     .bottom-bar {
       position: fixed;
       bottom: 0;
@@ -151,7 +352,9 @@ interface NavItem {
       right: 0;
       height: calc(3.5rem + var(--safe-bottom, 0px));
       padding-bottom: var(--safe-bottom, 0px);
-      background: var(--sidebar);
+      background: color-mix(in srgb, var(--sidebar) 94%, transparent);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
       border-top: 1px solid var(--sidebar-border);
       display: flex;
       align-items: center;
@@ -159,32 +362,43 @@ interface NavItem {
       z-index: 50;
     }
     .bottom-item {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.125rem;
+      gap: 0.25rem;
       flex: 1;
-      padding: 0.375rem 0;
-      color: var(--muted-foreground);
+      padding: 0.4375rem 0;
+      color: var(--foreground-subtle);
       text-decoration: none;
-      font-size: 0.5625rem;
-      font-weight: 500;
-      transition: color 0.15s ease;
+      font-size: 0.625rem;
+      letter-spacing: 0.02em;
+      transition: color 120ms var(--ease);
       -webkit-tap-highlight-color: transparent;
     }
-    .bottom-item.active {
-      color: var(--primary);
+    .bottom-item::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 0 0 2px 2px;
+      transform: translateX(-50%);
+      transition: width 180ms var(--ease);
     }
-    .bottom-label {
-      line-height: 1;
-      white-space: nowrap;
-    }
+    .bottom-item.active { color: var(--primary); }
+    .bottom-item.active::after { width: 1.5rem; }
 
-    /* ---- Visibility toggles ---- */
+    /* ============ Visibility toggles ============ */
     .desktop-only { display: flex; }
     .mobile-only { display: none; }
 
+    @media (max-width: 1024px) {
+      .sidebar { width: 12.5rem; min-width: 12.5rem; }
+    }
     @media (max-width: 768px) {
       .desktop-only { display: none !important; }
       .mobile-only { display: flex !important; }
@@ -192,30 +406,74 @@ interface NavItem {
   `],
 })
 export class SidebarComponent {
-  private readonly auth = inject(AuthService);
-  private readonly isAuthenticated: Signal<boolean> = toSignal(this.auth.isAuthenticated$, { initialValue: false });
+  readonly auth = inject(AuthService);
+  readonly isAuthenticated: Signal<boolean> = toSignal(this.auth.isAuthenticated$, { initialValue: false });
+  readonly userData: Signal<UserProfile | null> = toSignal(this.auth.userData$, { initialValue: null });
   private readonly isAdmin: Signal<boolean> = toSignal(this.auth.isAdmin$, { initialValue: false });
 
-  readonly navItems: readonly NavItem[] = [
-    { path: '/dashboard', icon: 'layout-dashboard', label: 'Dashboard', mobile: true },
-    { path: '/dev-library', icon: 'code', label: 'Library', mobile: true },
-    { path: '/cyber-toolbox', icon: 'wrench', label: 'Toolbox', mobile: true },
-    { path: '/secure-bridge', icon: 'send', label: 'Bridge', mobile: true },
-    { path: '/teams', icon: 'users', label: 'Teams', requiresAuth: true },
-    { path: '/it-tools', icon: 'hammer', label: 'Tools', mobile: true },
-    { path: '/admin', icon: 'shield', label: 'Admin', requiresAdmin: true },
+  readonly sections: readonly NavSection[] = [
+    {
+      label: 'Modules',
+      items: [
+        { path: '/dashboard',     icon: 'layout-dashboard', label: 'Dashboard',   kbd: '⌘1', mobile: true },
+        { path: '/dev-library',   icon: 'code',             label: 'Dev Library', kbd: '⌘2', mobile: true },
+        { path: '/cyber-toolbox', icon: 'wrench',           label: 'Cyber Toolbox', kbd: '⌘3', mobile: true },
+        { path: '/secure-bridge', icon: 'send',             label: 'Secure Bridge', kbd: '⌘4', mobile: true },
+        { path: '/it-tools',      icon: 'hammer',           label: 'IT Tools',    kbd: '⌘5', mobile: true },
+      ],
+    },
+    {
+      label: 'Workspace',
+      items: [
+        { path: '/teams', icon: 'users', label: 'Teams', kbd: '⌘T', requiresAuth: true },
+      ],
+    },
+    {
+      label: 'System',
+      items: [
+        { path: '/admin',    icon: 'shield',   label: 'Admin',    requiresAdmin: true },
+        { path: '/settings', icon: 'settings', label: 'Settings', kbd: '⌘,' },
+      ],
+    },
   ];
 
-  readonly visibleNavItems = computed(() =>
-    this.navItems.filter(item => {
-      if (item.requiresAdmin) return this.isAdmin();
-      if (item.requiresAuth) return this.isAuthenticated();
-      return true;
-    })
+  readonly visibleSections = computed<NavSection[]>(() =>
+    this.sections
+      .map(section => ({
+        label: section.label,
+        items: section.items.filter(item => {
+          if (item.requiresAdmin) return this.isAdmin();
+          if (item.requiresAuth) return this.isAuthenticated();
+          return true;
+        }),
+      }))
+      .filter(section => section.items.length > 0),
   );
 
-  /** Mobile bottom bar: only the core 5 items */
   readonly mobileNavItems = computed(() =>
-    this.visibleNavItems().filter(item => item.mobile).slice(0, 5)
+    this.sections
+      .flatMap(s => s.items)
+      .filter(item => {
+        if (!item.mobile) return false;
+        if (item.requiresAdmin) return this.isAdmin();
+        if (item.requiresAuth) return this.isAuthenticated();
+        return true;
+      })
+      .slice(0, 5),
   );
+
+  initials(name: string | undefined): string {
+    if (!name) return '?';
+    const parts = name.trim().split(/[\s._-]+/).filter(Boolean);
+    if (parts.length === 0) return name.slice(0, 2).toUpperCase();
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  roleTag(user: UserProfile | null): string {
+    if (!user) return '';
+    if (user.roles.includes('ROLE_ADMIN')) return 'admin';
+    if (user.roles.includes('ROLE_TEAM_LEAD')) return 'lead';
+    return 'user';
+  }
 }
