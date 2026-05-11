@@ -286,8 +286,10 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
     /* Main Content */
     .main-content {
       flex: 1;
-      overflow-y: auto;
-      padding: 1.5rem 1.5rem 3rem;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 1.5rem;
       min-width: 0;
       min-height: 0;
     }
@@ -662,6 +664,9 @@ const icons = { Code, Plus, X, Trash2, AlertTriangle, BookOpen, Users };
       }
       .main-content {
         padding: 1rem 0.75rem;
+        overflow-y: auto;
+        overflow-x: hidden;
+        display: block;
       }
       .dialog {
         padding: 1.25rem 0.5rem;

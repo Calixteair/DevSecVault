@@ -336,11 +336,23 @@ export interface ConceptEditPayload {
     </div>
   `,
   styles: [`
+    :host {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+    }
     .concept-editor {
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      min-height: 100%;
+      flex: 1;
+      min-height: 0;
+    }
+    /* Each non-editor block in the column keeps its natural height; only
+       .editor-card grows to fill the leftover space. */
+    .concept-editor > :not(.editor-card) {
+      flex-shrink: 0;
     }
 
     /* Header */
@@ -349,6 +361,7 @@ export interface ConceptEditPayload {
       justify-content: space-between;
       align-items: flex-start;
       gap: 1rem;
+      flex-shrink: 0;
     }
     .header-left {
       flex: 1;
@@ -548,6 +561,16 @@ export interface ConceptEditPayload {
       border: 1px solid var(--border);
       border-radius: var(--radius);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 16rem;
+    }
+    .editor-card app-monaco-editor {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      --monaco-height: 100%;
     }
     .editor-toolbar {
       display: flex;
@@ -599,6 +622,9 @@ export interface ConceptEditPayload {
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 1rem;
+      flex-shrink: 0;
+      max-height: 14rem;
+      overflow-y: auto;
     }
     .variables-header {
       display: flex;
@@ -852,6 +878,19 @@ export interface ConceptEditPayload {
       opacity: 1;
     }
     @media (max-width: 768px) {
+      :host, .concept-editor { flex: none; min-height: 0; }
+      .editor-card {
+        flex: none;
+        min-height: 0;
+      }
+      .editor-card app-monaco-editor {
+        flex: none;
+        --monaco-height: 24rem;
+      }
+      .variables-section {
+        max-height: none;
+        overflow: visible;
+      }
       .editor-header {
         flex-direction: column;
         align-items: stretch;
