@@ -1,5 +1,5 @@
-import { Component, Signal, computed, inject, signal, HostListener } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, Signal, computed, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   LucideAngularModule,
@@ -26,8 +26,6 @@ interface NavItem {
   icon: string;
   label: string;
   kbd?: string;
-  /** Lowercased key paired with Alt to navigate to `path`. */
-  key?: string;
   requiresAuth?: boolean;
   requiresAdmin?: boolean;
   mobile?: boolean;
@@ -65,11 +63,8 @@ interface NavSection {
               >
                 <lucide-icon [name]="item.icon" [size]="15" [strokeWidth]="1.75" class="nav-icon"></lucide-icon>
                 <span class="nav-label">{{ item.label }}</span>
-                @if (item.key) {
-                  <span class="nav-kbd-pair" [class.kbd-armed]="gPending()">
-                    <kbd class="nav-kbd nav-kbd-mod">g</kbd>
-                    <kbd class="nav-kbd">{{ item.key }}</kbd>
-                  </span>
+                @if (item.kbd) {
+                  <kbd class="nav-kbd">{{ item.kbd }}</kbd>
                 }
               </a>
             }
@@ -95,6 +90,7 @@ interface NavSection {
           <button class="login-cta" (click)="auth.login()">
             <lucide-icon name="log-in" [size]="14" [strokeWidth]="1.75"></lucide-icon>
             <span>Login</span>
+            <kbd class="nav-kbd">⌘L</kbd>
           </button>
         }
       </div>
@@ -234,7 +230,6 @@ interface NavSection {
       border-color: transparent;
       color: var(--primary);
     }
-    .nav-item.active .nav-kbd-plus { color: var(--primary); }
 
     .nav-icon {
       color: var(--foreground-subtle);
@@ -248,20 +243,8 @@ interface NavSection {
       white-space: nowrap;
     }
 
-    .nav-kbd-pair {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.1875rem;
-      flex-shrink: 0;
-      transition: opacity 120ms var(--ease);
-    }
-    .nav-kbd-pair.kbd-armed .nav-kbd-mod {
-      background: var(--primary-soft-strong);
-      border-color: var(--primary);
-      color: var(--primary);
-    }
     .nav-kbd {
-      min-width: 1.125rem;
+      min-width: 1.5rem;
       height: 1.125rem;
       padding: 0 0.3125rem;
       background: var(--surface-2);
@@ -276,10 +259,6 @@ interface NavSection {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-    }
-    .nav-kbd-mod {
-      text-transform: lowercase;
-      letter-spacing: 0.04em;
     }
 
     /* ---- Bottom user / login ---- */
@@ -428,78 +407,32 @@ interface NavSection {
 })
 export class SidebarComponent {
   readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
   readonly isAuthenticated: Signal<boolean> = toSignal(this.auth.isAuthenticated$, { initialValue: false });
   readonly userData: Signal<UserProfile | null> = toSignal(this.auth.userData$, { initialValue: null });
   private readonly isAdmin: Signal<boolean> = toSignal(this.auth.isAdmin$, { initialValue: false });
-
-  /** Vim-style leader: `g` arms, the next key within 1.5s navigates. */
-  readonly gPending = signal(false);
-  private gTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
-
-  @HostListener('document:keydown', ['$event'])
-  onShortcut(e: KeyboardEvent): void {
-    // Skip when a modifier is held (lets ⌘K, ctrl-r, etc. pass through).
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    // Don't hijack typing inside fields.
-    const t = e.target as HTMLElement | null;
-    if (t) {
-      const tag = t.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable) return;
-    }
-    const k = e.key.toLowerCase();
-    if (k === 'escape') {
-      this.clearLeader();
-      return;
-    }
-    if (!this.gPending()) {
-      if (k === 'g') {
-        this.gPending.set(true);
-        this.gTimeoutHandle = setTimeout(() => this.clearLeader(), 1500);
-        e.preventDefault();
-      }
-      return;
-    }
-    // Leader armed: try to resolve.
-    this.clearLeader();
-    const item = this.sections.flatMap(s => s.items).find(i => i.key === k);
-    if (!item) return;
-    if (item.requiresAdmin && !this.isAdmin()) return;
-    if (item.requiresAuth && !this.isAuthenticated()) return;
-    e.preventDefault();
-    this.router.navigateByUrl(item.path);
-  }
-
-  private clearLeader(): void {
-    this.gPending.set(false);
-    if (this.gTimeoutHandle) {
-      clearTimeout(this.gTimeoutHandle);
-      this.gTimeoutHandle = null;
-    }
-  }
 
   readonly sections: readonly NavSection[] = [
     {
       label: 'Modules',
       items: [
-        { path: '/dashboard',     icon: 'layout-dashboard', label: 'Dashboard',     key: 'd', mobile: true },
-        { path: '/dev-library',   icon: 'code',             label: 'Dev Library',   key: 'l', mobile: true },
-        { path: '/cyber-toolbox', icon: 'wrench',           label: 'Cyber Toolbox', key: 'c', mobile: true },
-        { path: '/secure-bridge', icon: 'send',             label: 'Secure Bridge', key: 'b', mobile: true },
-        { path: '/it-tools',      icon: 'hammer',           label: 'IT Tools',      key: 'i', mobile: true },
+        { path: '/dashboard',     icon: 'layout-dashboard', label: 'Dashboard',   kbd: '⌘1', mobile: true },
+        { path: '/dev-library',   icon: 'code',             label: 'Dev Library', kbd: '⌘2', mobile: true },
+        { path: '/cyber-toolbox', icon: 'wrench',           label: 'Cyber Toolbox', kbd: '⌘3', mobile: true },
+        { path: '/secure-bridge', icon: 'send',             label: 'Secure Bridge', kbd: '⌘4', mobile: true },
+        { path: '/it-tools',      icon: 'hammer',           label: 'IT Tools',    kbd: '⌘5', mobile: true },
       ],
     },
     {
       label: 'Workspace',
       items: [
-        { path: '/teams', icon: 'users', label: 'Teams', key: 't', requiresAuth: true },
+        { path: '/teams', icon: 'users', label: 'Teams', kbd: '⌘T', requiresAuth: true },
       ],
     },
     {
       label: 'System',
       items: [
-        { path: '/admin',    icon: 'shield',   label: 'Admin',    key: 'a', requiresAdmin: true },
-        { path: '/settings', icon: 'settings', label: 'Settings', key: 's' },
+        { path: '/admin',    icon: 'shield',   label: 'Admin',    requiresAdmin: true },
+        { path: '/settings', icon: 'settings', label: 'Settings', kbd: '⌘,' },
       ],
     },
   ];
