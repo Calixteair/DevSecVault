@@ -1,4 +1,5 @@
 import { Component, Signal, inject, signal, HostListener, ElementRef, OnDestroy } from '@angular/core';
+import { AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject, Subscription, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
@@ -6,6 +7,7 @@ import {
   LucideAngularModule,
   LUCIDE_ICONS,
   LucideIconProvider,
+  Search,
   User,
   Sun,
   Moon,
@@ -25,31 +27,29 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  CornerDownLeft,
 } from 'lucide-angular';
 import { ThemeService } from '../../core/services/theme.service';
 import { AuthService, UserProfile } from '../../core/services/auth.service';
 import { SearchService, SearchHit } from '../../core/services/search.service';
 import { NotificationService } from '../../core/services/notification.service';
 
-const icons = { User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Code, Wrench, Hash, Star, X, Check, Trash2, Info, AlertTriangle, CheckCircle, XCircle, CornerDownLeft };
+const icons = { Search, User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Code, Wrench, Hash, Star, X, Check, Trash2, Info, AlertTriangle, CheckCircle, XCircle };
 
 @Component({
   selector: 'app-topbar',
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, AsyncPipe],
   providers: [
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(icons) },
   ],
   template: `
     <header class="topbar">
-      <!-- =========== Command bar (centre) =========== -->
-      <div class="cmd" [class.cmd-focused]="searchFocused()">
-        <span class="cmd-prompt font-mono" aria-hidden="true">&gt;&gt;</span>
+      <div class="topbar-search" [class.search-focused]="searchFocused()">
+        <lucide-icon name="search" [size]="16" [strokeWidth]="2" class="search-icon"></lucide-icon>
         <input
           #searchInput
           type="text"
-          class="cmd-input font-mono"
-          placeholder="type a command, or search snippets, payloads, tools"
+          class="search-input font-mono"
+          placeholder="Search snippets, tools, payloads... (Cmd+K)"
           [value]="searchQuery()"
           (input)="onSearchInput($event)"
           (focus)="searchFocused.set(true)"
@@ -57,44 +57,36 @@ const icons = { User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Code, Wrenc
           (keydown.arrowdown)="onArrowDown($event)"
           (keydown.arrowup)="onArrowUp($event)"
           (keydown.enter)="onEnter()"
-          autocomplete="off"
-          spellcheck="false"
         />
         @if (searchQuery()) {
-          <button class="cmd-clear" (click)="clearSearch()" aria-label="Clear">
-            <lucide-icon name="x" [size]="13" [strokeWidth]="2"></lucide-icon>
+          <button class="search-clear" (click)="clearSearch()">
+            <lucide-icon name="x" [size]="14" [strokeWidth]="2"></lucide-icon>
           </button>
         }
-        <kbd class="cmd-kbd">⌘K</kbd>
+        <kbd class="search-kbd font-mono">⌘K</kbd>
 
         @if (searchFocused() && (searchResults().length > 0 || searchQuery())) {
-          <div class="palette">
+          <div class="search-dropdown">
             @if (searchResults().length === 0 && searchQuery()) {
-              <div class="palette-empty font-mono">
-                <span class="palette-arrow">→</span>
-                <span>no match for</span>
-                <span class="palette-query">"{{ searchQuery() }}"</span>
-              </div>
+              <div class="search-empty">No results for "{{ searchQuery() }}"</div>
             }
 
             @if (snippetResults().length > 0) {
-              <div class="palette-group">
-                <div class="palette-group-label font-mono">
-                  <span class="palette-group-sigil">[01]</span>
-                  <span>snippets</span>
-                  <span class="palette-group-count">· {{ snippetResults().length }}</span>
+              <div class="search-group">
+                <div class="search-group-label font-mono">
+                  <lucide-icon name="code" [size]="12" [strokeWidth]="2"></lucide-icon>
+                  Concepts
                 </div>
                 @for (hit of snippetResults(); track hit.id; let i = $index) {
                   <button
-                    class="palette-row"
-                    [class.row-active]="activeIndex() === getGlobalIndex('snippet', i)"
+                    class="search-result"
+                    [class.result-active]="activeIndex() === getGlobalIndex('snippet', i)"
                     (click)="navigateToHit(hit)"
                     (mouseenter)="activeIndex.set(getGlobalIndex('snippet', i))"
                   >
-                    <span class="row-sigil font-mono">snippet</span>
-                    <span class="row-title">{{ hit.title }}</span>
+                    <span class="result-title">{{ hit.title }}</span>
                     @if (hit.language) {
-                      <span class="row-badge font-mono">{{ hit.language }}</span>
+                      <span class="result-badge font-mono">{{ hit.language }}</span>
                     }
                   </button>
                 }
@@ -102,23 +94,21 @@ const icons = { User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Code, Wrenc
             }
 
             @if (payloadResults().length > 0) {
-              <div class="palette-group">
-                <div class="palette-group-label font-mono">
-                  <span class="palette-group-sigil">[02]</span>
-                  <span>payloads</span>
-                  <span class="palette-group-count">· {{ payloadResults().length }}</span>
+              <div class="search-group">
+                <div class="search-group-label font-mono">
+                  <lucide-icon name="wrench" [size]="12" [strokeWidth]="2"></lucide-icon>
+                  Payloads
                 </div>
                 @for (hit of payloadResults(); track hit.id; let i = $index) {
                   <button
-                    class="palette-row"
-                    [class.row-active]="activeIndex() === getGlobalIndex('payload', i)"
+                    class="search-result"
+                    [class.result-active]="activeIndex() === getGlobalIndex('payload', i)"
                     (click)="navigateToHit(hit)"
                     (mouseenter)="activeIndex.set(getGlobalIndex('payload', i))"
                   >
-                    <span class="row-sigil font-mono">payload</span>
-                    <span class="row-title">{{ hit.title }}</span>
+                    <span class="result-title">{{ hit.title }}</span>
                     @if (hit.category) {
-                      <span class="row-badge font-mono">{{ hit.category }}</span>
+                      <span class="result-badge font-mono">{{ hit.category }}</span>
                     }
                   </button>
                 }
@@ -126,23 +116,21 @@ const icons = { User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Code, Wrenc
             }
 
             @if (toolResults().length > 0) {
-              <div class="palette-group">
-                <div class="palette-group-label font-mono">
-                  <span class="palette-group-sigil">[03]</span>
-                  <span>it-tools</span>
-                  <span class="palette-group-count">· {{ toolResults().length }}</span>
+              <div class="search-group">
+                <div class="search-group-label font-mono">
+                  <lucide-icon name="wrench" [size]="12" [strokeWidth]="2"></lucide-icon>
+                  IT Tools
                 </div>
                 @for (hit of toolResults(); track hit.id; let i = $index) {
                   <button
-                    class="palette-row"
-                    [class.row-active]="activeIndex() === getGlobalIndex('tool', i)"
+                    class="search-result"
+                    [class.result-active]="activeIndex() === getGlobalIndex('tool', i)"
                     (click)="navigateToHit(hit)"
                     (mouseenter)="activeIndex.set(getGlobalIndex('tool', i))"
                   >
-                    <span class="row-sigil font-mono">tool</span>
-                    <span class="row-title">{{ hit.title }}</span>
+                    <span class="result-title">{{ hit.title }}</span>
                     @if (hit.category) {
-                      <span class="row-badge font-mono">{{ hit.category }}</span>
+                      <span class="result-badge font-mono">{{ hit.category }}</span>
                     }
                   </button>
                 }
@@ -150,261 +138,249 @@ const icons = { User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Code, Wrenc
             }
 
             @if (tagResults().length > 0) {
-              <div class="palette-group">
-                <div class="palette-group-label font-mono">
-                  <span class="palette-group-sigil">[04]</span>
-                  <span>tags</span>
-                  <span class="palette-group-count">· {{ tagResults().length }}</span>
+              <div class="search-group">
+                <div class="search-group-label font-mono">
+                  <lucide-icon name="hash" [size]="12" [strokeWidth]="2"></lucide-icon>
+                  Tags
                 </div>
                 @for (hit of tagResults(); track hit.id; let i = $index) {
                   <button
-                    class="palette-row"
-                    [class.row-active]="activeIndex() === getGlobalIndex('tag', i)"
+                    class="search-result"
+                    [class.result-active]="activeIndex() === getGlobalIndex('tag', i)"
                     (click)="navigateToHit(hit)"
                     (mouseenter)="activeIndex.set(getGlobalIndex('tag', i))"
                   >
-                    <span class="row-sigil font-mono">tag</span>
-                    <span class="row-title">
+                    <span class="result-title">
                       @if (hit.isOfficial) {
-                        <span class="row-official" title="Official">★</span>
+                        <lucide-icon name="star" [size]="12" [strokeWidth]="2" class="tag-official"></lucide-icon>
                       }
-                      <span class="font-mono">#{{ hit.title }}</span>
+                      #{{ hit.title }}
                     </span>
                   </button>
                 }
               </div>
             }
 
-            <footer class="palette-foot font-mono">
-              <span class="palette-hint">
-                <kbd>↑↓</kbd><span>navigate</span>
-                <kbd>↵</kbd><span>open</span>
-                <kbd>esc</kbd><span>close</span>
-              </span>
-              @if (searchResults().length > 0 && searchQuery()) {
-                <button class="palette-see-all" (click)="goToFullSearch()">
-                  see all results
-                  <lucide-icon name="corner-down-left" [size]="11" [strokeWidth]="2"></lucide-icon>
-                </button>
-              }
-            </footer>
+            @if (searchResults().length > 0 && searchQuery()) {
+              <button class="search-see-all font-mono" (click)="goToFullSearch()">
+                See all results for "{{ searchQuery() }}" →
+              </button>
+            }
           </div>
         }
       </div>
 
-      <!-- =========== Toolbar (droite) =========== -->
-      <div class="tools">
-        <button class="tool-btn" (click)="themeService.toggle()" [title]="themeService.isDark() ? 'Light mode' : 'Dark mode'">
+      <div class="topbar-actions">
+        @if (auth.isAuthenticated$ | async) {
+          @let user = userData();
+          @if (user !== null) {
+            <div class="user-badge">
+              @if (user.roles.includes('ROLE_ADMIN')) {
+                <lucide-icon name="shield" [size]="16" [strokeWidth]="2" class="role-icon role-admin"></lucide-icon>
+              } @else if (user.roles.includes('ROLE_TEAM_LEAD')) {
+                <lucide-icon name="crown" [size]="16" [strokeWidth]="2" class="role-icon role-lead"></lucide-icon>
+              } @else {
+                <lucide-icon name="user" [size]="16" [strokeWidth]="2"></lucide-icon>
+              }
+              <span class="user-name">{{ user.username }}</span>
+              <span class="user-role">
+                @if (user.roles.includes('ROLE_ADMIN')) {
+                  (Admin)
+                } @else if (user.roles.includes('ROLE_TEAM_LEAD')) {
+                  (Team Lead)
+                } @else {
+                  (User)
+                }
+              </span>
+            </div>
+            <button class="icon-btn" (click)="auth.logout()" title="Logout">
+              <lucide-icon name="log-out" [size]="18" [strokeWidth]="2"></lucide-icon>
+            </button>
+          }
+        } @else {
+          <div class="user-badge">
+            <lucide-icon name="user" [size]="16" [strokeWidth]="2"></lucide-icon>
+            <span class="user-name">Guest</span>
+          </div>
+          <button class="login-btn" (click)="auth.login()">
+            <lucide-icon name="log-in" [size]="16" [strokeWidth]="2"></lucide-icon>
+            <span>Login</span>
+          </button>
+        }
+
+        <button class="icon-btn" (click)="themeService.toggle()" title="Toggle theme">
           @if (themeService.isDark()) {
-            <lucide-icon name="sun" [size]="15" [strokeWidth]="1.75"></lucide-icon>
+            <lucide-icon name="sun" [size]="18" [strokeWidth]="2"></lucide-icon>
           } @else {
-            <lucide-icon name="moon" [size]="15" [strokeWidth]="1.75"></lucide-icon>
+            <lucide-icon name="moon" [size]="18" [strokeWidth]="2"></lucide-icon>
           }
         </button>
 
-        <div class="notif-wrap">
-          <button class="tool-btn" title="Notifications" (click)="toggleNotifications()">
-            <lucide-icon name="bell" [size]="15" [strokeWidth]="1.75"></lucide-icon>
+        <div class="notification-wrapper">
+          <button class="icon-btn notification-btn" title="Notifications" (click)="toggleNotifications()">
+            <lucide-icon name="bell" [size]="18" [strokeWidth]="2"></lucide-icon>
             @if (notifService.hasUnread()) {
-              <span class="tool-dot"></span>
+              <span class="notification-dot"></span>
             }
           </button>
 
           @if (showNotifications()) {
-            <div class="notif-pop">
-              <div class="notif-head font-mono">
-                <span>notifications</span>
+            <div class="notif-dropdown">
+              <div class="notif-header">
+                <span class="notif-title font-mono">Notifications</span>
                 <div class="notif-actions">
                   @if (notifService.hasUnread()) {
-                    <button class="notif-act" title="Mark all read" (click)="notifService.markAllAsRead()">
-                      <lucide-icon name="check" [size]="12" [strokeWidth]="2"></lucide-icon>
+                    <button class="notif-action-btn" title="Mark all as read" (click)="notifService.markAllAsRead()">
+                      <lucide-icon name="check" [size]="14" [strokeWidth]="2"></lucide-icon>
                     </button>
                   }
                   @if (notifService.notifications().length > 0) {
-                    <button class="notif-act" title="Clear all" (click)="notifService.clearAll()">
-                      <lucide-icon name="trash-2" [size]="12" [strokeWidth]="2"></lucide-icon>
+                    <button class="notif-action-btn" title="Clear all" (click)="notifService.clearAll()">
+                      <lucide-icon name="trash-2" [size]="14" [strokeWidth]="2"></lucide-icon>
                     </button>
                   }
                 </div>
               </div>
-              <div class="notif-body">
+              <div class="notif-list">
                 @for (notif of notifService.notifications(); track notif.id) {
-                  <div class="notif-row" [class.notif-unread]="!notif.read" (click)="notifService.markAsRead(notif.id)">
-                    <span class="notif-sigil font-mono" [class]="'notif-' + notif.type">
+                  <div class="notif-item" [class.notif-unread]="!notif.read" (click)="notifService.markAsRead(notif.id)">
+                    <div class="notif-icon-wrap" [class]="'notif-type-' + notif.type">
                       @switch (notif.type) {
-                        @case ('success') { ok }
-                        @case ('warning') { ! }
-                        @case ('error') { x }
-                        @default { i }
+                        @case ('success') { <lucide-icon name="check-circle" [size]="14" [strokeWidth]="2"></lucide-icon> }
+                        @case ('warning') { <lucide-icon name="alert-triangle" [size]="14" [strokeWidth]="2"></lucide-icon> }
+                        @case ('error') { <lucide-icon name="x-circle" [size]="14" [strokeWidth]="2"></lucide-icon> }
+                        @default { <lucide-icon name="info" [size]="14" [strokeWidth]="2"></lucide-icon> }
                       }
-                    </span>
-                    <div class="notif-msg">
-                      <span class="notif-title">{{ notif.title }}</span>
-                      <span class="notif-text">{{ notif.message }}</span>
                     </div>
-                    <button class="notif-x" (click)="$event.stopPropagation(); notifService.dismiss(notif.id)" aria-label="Dismiss">
-                      <lucide-icon name="x" [size]="11" [strokeWidth]="2"></lucide-icon>
+                    <div class="notif-content">
+                      <span class="notif-item-title">{{ notif.title }}</span>
+                      <span class="notif-item-msg">{{ notif.message }}</span>
+                    </div>
+                    <button class="notif-dismiss" (click)="$event.stopPropagation(); notifService.dismiss(notif.id)">
+                      <lucide-icon name="x" [size]="12" [strokeWidth]="2"></lucide-icon>
                     </button>
                   </div>
                 } @empty {
-                  <div class="notif-empty font-mono">no notifications</div>
+                  <div class="notif-empty">No notifications</div>
                 }
               </div>
             </div>
           }
         </div>
-
-        @if (isAuthenticated()) {
-          @let user = userData();
-          @if (user !== null) {
-            <button class="tool-btn" (click)="auth.logout()" title="Logout">
-              <lucide-icon name="log-out" [size]="15" [strokeWidth]="1.75"></lucide-icon>
-            </button>
-            <div class="avatar font-mono" [title]="user.username">
-              @if (user.roles.includes('ROLE_ADMIN')) {
-                <lucide-icon name="shield" [size]="13" [strokeWidth]="2" class="avatar-role role-admin"></lucide-icon>
-              } @else if (user.roles.includes('ROLE_TEAM_LEAD')) {
-                <lucide-icon name="crown" [size]="13" [strokeWidth]="2" class="avatar-role role-lead"></lucide-icon>
-              } @else {
-                <span class="avatar-initials">{{ initials(user.username) }}</span>
-              }
-            </div>
-          }
-        } @else {
-          <button class="login-pill font-mono" (click)="auth.login()">
-            login
-            <kbd>⌘L</kbd>
-          </button>
-        }
       </div>
     </header>
   `,
   styles: [`
     .topbar {
-      height: 3rem;
-      min-height: 3rem;
-      background: color-mix(in srgb, var(--surface-1) 86%, transparent);
-      -webkit-backdrop-filter: blur(14px) saturate(120%);
-      backdrop-filter: blur(14px) saturate(120%);
+      height: 4rem;
+      min-height: 4rem;
+      background: var(--card);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 0.875rem;
-      gap: 0.875rem;
-      position: relative;
-      z-index: 20;
+      padding: 0 1.5rem;
+      gap: 1rem;
     }
-
-    /* =========== Command bar =========== */
-    .cmd {
-      flex: 1;
-      max-width: 40rem;
-      position: relative;
+    .topbar-search {
       display: flex;
       align-items: center;
-      height: 2rem;
-      padding: 0 0.625rem 0 0.625rem;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      transition: border-color 180ms var(--ease), background-color 180ms var(--ease), box-shadow 180ms var(--ease);
-    }
-    .cmd:hover { border-color: var(--border-strong); }
-    .cmd-focused {
-      background: var(--input-background);
-      border-color: var(--primary);
-      box-shadow: var(--shadow-glow);
-    }
-    .cmd-prompt {
-      color: var(--primary);
-      font-size: 0.8125rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-right: 0.5rem;
-      flex-shrink: 0;
-    }
-    .cmd-input {
       flex: 1;
-      height: 100%;
-      background: transparent;
-      border: none;
-      outline: none;
+      max-width: 36rem;
+      position: relative;
+    }
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      color: var(--muted-foreground);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .search-input {
+      width: 100%;
+      height: 2.25rem;
+      padding: 0 4rem 0 2.25rem;
+      background: var(--input-background);
+      border: 1px solid var(--input);
+      border-radius: var(--radius);
       color: var(--foreground);
       font-size: 0.8125rem;
-      letter-spacing: -0.005em;
+      outline: none;
+      transition: border-color 0.15s ease;
     }
-    .cmd-input::placeholder { color: var(--foreground-subtle); }
-    .cmd-clear {
+    .search-input::placeholder {
+      color: var(--muted-foreground);
+    }
+    .search-focused .search-input,
+    .search-input:focus {
+      border-color: var(--ring);
+    }
+    .search-kbd {
+      position: absolute;
+      right: 0.5rem;
+      font-size: 0.625rem;
+      padding: 0.125rem 0.375rem;
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.25rem;
+      color: var(--muted-foreground);
+      pointer-events: none;
+    }
+    .search-clear {
+      position: absolute;
+      right: 2.75rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 1.125rem;
-      height: 1.125rem;
-      margin-left: 0.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
       border: none;
-      background: var(--surface-3);
-      color: var(--foreground-muted);
+      background: var(--secondary);
+      color: var(--muted-foreground);
       border-radius: 50%;
       cursor: pointer;
-      transition: background-color 120ms var(--ease), color 120ms var(--ease);
     }
-    .cmd-clear:hover { background: var(--border-strong); color: var(--foreground); }
-    .cmd-kbd {
-      margin-left: 0.5rem;
-      flex-shrink: 0;
-    }
+    .search-clear:hover { color: var(--foreground); }
 
-    /* =========== Palette dropdown =========== */
-    .palette {
+    /* Dropdown */
+    .search-dropdown {
       position: absolute;
-      top: calc(100% + 0.5rem);
+      top: calc(100% + 0.375rem);
       left: 0;
       right: 0;
-      background: var(--popover);
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-lg);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
       z-index: 100;
-      max-height: 26rem;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      max-height: 24rem;
+      overflow-y: auto;
+      padding: 0.375rem;
     }
-    .palette-empty {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+    .search-empty {
       padding: 1rem;
-      font-size: 0.75rem;
-      color: var(--foreground-subtle);
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--muted-foreground);
     }
-    .palette-arrow { color: var(--primary); }
-    .palette-query { color: var(--foreground); }
-
-    .palette-group {
-      padding: 0.25rem 0.25rem;
-    }
-    .palette-group-label {
+    .search-group { margin-bottom: 0.25rem; }
+    .search-group-label {
       display: flex;
       align-items: center;
       gap: 0.375rem;
-      padding: 0.5rem 0.625rem 0.375rem;
-      font-size: 0.625rem;
-      letter-spacing: 0.08em;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--muted-foreground);
       text-transform: uppercase;
-      color: var(--foreground-subtle);
+      letter-spacing: 0.05em;
+      padding: 0.375rem 0.5rem;
     }
-    .palette-group-sigil { color: var(--primary); }
-    .palette-group-count { color: var(--foreground-subtle); }
-
-    .palette-row {
-      display: grid;
-      grid-template-columns: 4.25rem 1fr auto;
+    .search-result {
+      display: flex;
       align-items: center;
-      gap: 0.625rem;
+      justify-content: space-between;
       width: 100%;
-      padding: 0.4375rem 0.625rem;
+      padding: 0.5rem 0.625rem;
       border: none;
       background: transparent;
       color: var(--foreground);
@@ -412,289 +388,258 @@ const icons = { User, Sun, Moon, Bell, LogIn, LogOut, Shield, Crown, Code, Wrenc
       font-size: 0.8125rem;
       text-align: left;
       cursor: pointer;
-      border-radius: var(--radius-sm);
-      transition: background-color 100ms var(--ease);
+      border-radius: calc(var(--radius) - 2px);
+      transition: background-color 0.1s ease;
     }
-    .palette-row:hover, .palette-row.row-active {
-      background: var(--surface-2);
+    .search-result:hover,
+    .search-result.result-active {
+      background: var(--secondary);
     }
-    .palette-row.row-active { color: var(--foreground); }
-
-    .row-sigil {
-      font-size: 0.625rem;
-      color: var(--foreground-subtle);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      padding: 0.125rem 0.375rem;
-      background: var(--surface-2);
-      border-radius: var(--radius-sm);
-      text-align: center;
-    }
-    .row-active .row-sigil {
-      background: var(--primary-soft);
-      color: var(--primary);
-    }
-    .row-title {
+    .result-title {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.375rem;
     }
-    .row-badge {
-      font-size: 0.625rem;
-      padding: 0.125rem 0.375rem;
-      border-radius: var(--radius-sm);
-      background: var(--surface-2);
-      color: var(--foreground-muted);
-      letter-spacing: 0.02em;
+    .result-badge {
+      font-size: 0.6875rem;
+      padding: 0.0625rem 0.375rem;
+      border-radius: 0.25rem;
+      background: var(--secondary);
+      color: var(--muted-foreground);
+      flex-shrink: 0;
     }
-    .row-official { color: var(--primary); font-size: 0.75rem; }
-
-    .palette-foot {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
+    .tag-official { color: var(--accent); }
+    .search-see-all {
+      width: 100%;
+      margin-top: 0.25rem;
       padding: 0.5rem 0.625rem;
+      border: none;
       border-top: 1px solid var(--border);
-      background: var(--surface-2);
-      font-size: 0.6875rem;
-      color: var(--foreground-subtle);
+      background: transparent;
+      color: var(--primary);
+      font-size: 0.75rem;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px);
     }
-    .palette-hint {
-      display: inline-flex;
+    .search-see-all:hover { background: var(--secondary); }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .user-badge {
+      display: flex;
       align-items: center;
       gap: 0.375rem;
+      color: var(--foreground);
+      font-size: 0.8125rem;
     }
-    .palette-hint kbd {
-      margin-right: 0.125rem;
+    .user-role {
+      color: var(--muted-foreground);
+      font-size: 0.75rem;
     }
-    .palette-see-all {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.25rem 0.5rem;
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--primary);
-      font-family: var(--font-mono);
-      font-size: 0.6875rem;
-      cursor: pointer;
-      transition: background-color 120ms var(--ease), border-color 120ms var(--ease);
-    }
-    .palette-see-all:hover {
-      background: var(--primary-soft);
-      border-color: var(--primary-soft-strong);
-    }
-
-    /* =========== Right toolbar =========== */
-    .tools {
+    .role-icon.role-admin { color: var(--destructive); }
+    .role-icon.role-lead { color: var(--accent); }
+    .login-btn {
       display: flex;
       align-items: center;
-      gap: 0.25rem;
-    }
-    .tool-btn {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 2rem;
-      height: 2rem;
+      gap: 0.375rem;
+      height: 2.25rem;
+      padding: 0 0.75rem;
       border-radius: var(--radius);
       border: none;
-      background: transparent;
-      color: var(--foreground-subtle);
-      cursor: pointer;
-      transition: background-color 120ms var(--ease), color 120ms var(--ease);
-    }
-    .tool-btn:hover { background: var(--surface-2); color: var(--foreground); }
-    .tool-dot {
-      position: absolute;
-      top: 0.4375rem;
-      right: 0.4375rem;
-      width: 0.4375rem;
-      height: 0.4375rem;
-      background: var(--primary);
-      border-radius: 50%;
-      box-shadow: 0 0 0 2px var(--surface-1);
-    }
-
-    .avatar {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 1.75rem;
-      height: 1.75rem;
-      margin-left: 0.25rem;
-      background: var(--primary-soft-strong);
-      color: var(--primary);
-      border-radius: var(--radius-sm);
-      font-size: 0.625rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
-    }
-    .avatar-role { color: var(--primary); }
-    .role-admin { color: var(--destructive); }
-    .role-lead { color: var(--primary); }
-
-    .login-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.375rem;
-      height: 1.875rem;
-      padding: 0 0.625rem;
       background: var(--primary);
       color: var(--primary-foreground);
-      border: none;
-      border-radius: var(--radius);
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      font-weight: 600;
+      font-family: inherit;
+      font-size: 0.8125rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: background-color 120ms var(--ease), box-shadow 120ms var(--ease);
+      transition: opacity 0.15s ease;
     }
-    .login-pill kbd {
-      background: rgba(255,255,255,0.15);
-      border-color: transparent;
-      color: inherit;
+    .login-btn:hover { opacity: 0.9; }
+    .icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: var(--radius);
+      border: none;
+      background: transparent;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
-    .login-pill:hover {
-      background: var(--primary-hover);
+    .icon-btn:hover {
+      background: var(--secondary);
+      color: var(--foreground);
+    }
+    .notification-wrapper { position: relative; }
+    .notification-btn { position: relative; }
+    .notification-dot {
+      position: absolute;
+      top: 0.375rem;
+      right: 0.375rem;
+      width: 0.5rem;
+      height: 0.5rem;
+      background: var(--destructive);
+      border-radius: 50%;
+      border: 2px solid var(--card);
     }
 
-    /* =========== Notif pop =========== */
-    .notif-wrap { position: relative; }
-    .notif-pop {
+    /* Notification dropdown */
+    .notif-dropdown {
       position: absolute;
-      top: calc(100% + 0.5rem);
+      top: calc(100% + 0.375rem);
       right: 0;
       width: 20rem;
-      background: var(--popover);
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-lg);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
       z-index: 100;
       overflow: hidden;
     }
-    .notif-head {
+    .notif-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.5rem 0.625rem;
-      background: var(--surface-2);
+      padding: 0.625rem 0.75rem;
       border-bottom: 1px solid var(--border);
-      font-size: 0.625rem;
-      letter-spacing: 0.08em;
+    }
+    .notif-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--foreground);
       text-transform: uppercase;
-      color: var(--foreground-subtle);
+      letter-spacing: 0.05em;
     }
-    .notif-actions { display: flex; gap: 0.125rem; }
-    .notif-act {
+    .notif-actions { display: flex; gap: 0.25rem; }
+    .notif-action-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 1.375rem;
-      height: 1.375rem;
+      width: 1.5rem;
+      height: 1.5rem;
       border: none;
       background: transparent;
-      color: var(--foreground-subtle);
+      color: var(--muted-foreground);
       cursor: pointer;
-      border-radius: var(--radius-sm);
-      transition: background-color 120ms var(--ease), color 120ms var(--ease);
+      border-radius: 0.25rem;
     }
-    .notif-act:hover { background: var(--surface-3); color: var(--foreground); }
-
-    .notif-body { max-height: 18rem; overflow-y: auto; }
-    .notif-row {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      align-items: start;
+    .notif-action-btn:hover { background: var(--secondary); color: var(--foreground); }
+    .notif-list {
+      max-height: 20rem;
+      overflow-y: auto;
+    }
+    .notif-item {
+      display: flex;
+      align-items: flex-start;
       gap: 0.5rem;
-      padding: 0.5rem 0.625rem;
+      padding: 0.625rem 0.75rem;
       cursor: pointer;
-      border-bottom: 1px solid var(--border-line);
-      transition: background-color 100ms var(--ease);
+      transition: background-color 0.1s ease;
+      border-bottom: 1px solid var(--border);
     }
-    .notif-row:last-child { border-bottom: none; }
-    .notif-row:hover { background: var(--surface-2); }
-    .notif-unread { background: color-mix(in srgb, var(--primary) 6%, transparent); }
-    .notif-sigil {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 1.375rem;
-      height: 1.375rem;
-      font-size: 0.625rem;
-      font-weight: 700;
-      letter-spacing: 0;
-      border-radius: var(--radius-sm);
-      text-transform: lowercase;
-    }
-    .notif-info { background: var(--primary-soft); color: var(--primary); }
-    .notif-success { background: var(--success-soft); color: var(--success); }
-    .notif-warning { background: var(--warning-soft); color: var(--warning); }
-    .notif-error { background: var(--destructive-soft); color: var(--destructive); }
-
-    .notif-msg { display: flex; flex-direction: column; min-width: 0; gap: 0.0625rem; }
-    .notif-title { font-size: 0.75rem; font-weight: 600; color: var(--foreground); }
-    .notif-text { font-size: 0.6875rem; color: var(--foreground-muted); line-height: 1.4; }
-    .notif-x {
+    .notif-item:last-child { border-bottom: none; }
+    .notif-item:hover { background: var(--secondary); }
+    .notif-unread { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+    .notif-icon-wrap {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 1.125rem;
-      height: 1.125rem;
+      flex-shrink: 0;
+      margin-top: 0.0625rem;
+    }
+    .notif-type-info { color: var(--primary); }
+    .notif-type-success { color: var(--primary); }
+    .notif-type-warning { color: var(--accent); }
+    .notif-type-error { color: var(--destructive); }
+    .notif-content { flex: 1; min-width: 0; }
+    .notif-item-title {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--foreground);
+    }
+    .notif-item-msg {
+      display: block;
+      font-size: 0.6875rem;
+      color: var(--muted-foreground);
+      margin-top: 0.0625rem;
+    }
+    .notif-dismiss {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.25rem;
+      height: 1.25rem;
       border: none;
       background: transparent;
-      color: var(--foreground-subtle);
+      color: var(--muted-foreground);
       cursor: pointer;
-      border-radius: var(--radius-sm);
+      border-radius: 0.25rem;
+      flex-shrink: 0;
       opacity: 0;
-      transition: opacity 100ms var(--ease), color 120ms var(--ease);
+      transition: opacity 0.1s ease;
     }
-    .notif-row:hover .notif-x { opacity: 1; }
-    .notif-x:hover { color: var(--destructive); }
+    .notif-item:hover .notif-dismiss { opacity: 1; }
+    .notif-dismiss:hover { color: var(--destructive); }
     .notif-empty {
       padding: 1.5rem;
       text-align: center;
-      font-size: 0.75rem;
-      color: var(--foreground-subtle);
-      letter-spacing: 0.04em;
+      font-size: 0.8125rem;
+      color: var(--muted-foreground);
     }
 
-    /* =========== Responsive =========== */
+    /* ---- Responsive ---- */
     @media (max-width: 768px) {
       .topbar {
-        height: 2.75rem;
-        min-height: 2.75rem;
-        padding: 0 0.625rem;
+        height: 3.25rem;
+        min-height: 3.25rem;
+        padding: 0 0.75rem;
         gap: 0.5rem;
       }
-      .cmd { max-width: none; height: 1.875rem; padding: 0 0.5rem; }
-      .cmd-prompt { font-size: 0.75rem; }
-      .cmd-input { font-size: 0.75rem; }
-      .cmd-kbd { display: none; }
-      .tool-btn { width: 1.875rem; height: 1.875rem; }
-      .avatar { width: 1.625rem; height: 1.625rem; margin-left: 0.125rem; }
-      .login-pill { height: 1.75rem; padding: 0 0.5rem; font-size: 0.6875rem; }
-      .notif-pop {
+      .search-input {
+        font-size: 0.75rem;
+        height: 2rem;
+      }
+      .search-kbd { display: none; }
+      .search-input { padding-right: 2rem; }
+      .search-clear { right: 0.5rem; }
+      .user-badge .user-name,
+      .user-badge .user-role { display: none; }
+      .topbar-actions { gap: 0.375rem; }
+      .icon-btn { width: 2rem; height: 2rem; }
+      .login-btn { padding: 0 0.5rem; height: 2rem; font-size: 0.75rem; }
+      .login-btn span { display: none; }
+      .notif-dropdown {
         position: fixed;
-        top: 3rem;
+        top: 3.25rem;
         left: 0.5rem;
         right: 0.5rem;
         width: auto;
       }
-      .palette {
+      .search-dropdown {
         position: fixed;
-        top: 3rem;
-        left: 0.5rem;
-        right: 0.5rem;
+        top: 3.25rem;
+        left: 0;
+        right: 0;
+        border-radius: 0;
         max-height: 60vh;
       }
+    }
+    @media (max-width: 480px) {
+      .search-input::placeholder { font-size: 0.6875rem; }
     }
   `],
 })
@@ -707,7 +652,6 @@ export class TopbarComponent implements OnDestroy {
   private readonly el = inject(ElementRef);
 
   readonly userData: Signal<UserProfile | null> = toSignal(this.auth.userData$, { initialValue: null });
-  readonly isAuthenticated: Signal<boolean> = toSignal(this.auth.isAuthenticated$, { initialValue: false });
 
   readonly searchQuery = signal('');
   readonly searchFocused = signal(false);
@@ -733,14 +677,16 @@ export class TopbarComponent implements OnDestroy {
     this.searchSub.unsubscribe();
   }
 
+  // Cmd+K / Ctrl+K global shortcut
   @HostListener('document:keydown', ['$event'])
   onGlobalKey(e: KeyboardEvent): void {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault();
-      const input = this.el.nativeElement.querySelector('.cmd-input') as HTMLInputElement | null;
+      const input = this.el.nativeElement.querySelector('.search-input') as HTMLInputElement | null;
       input?.focus();
       input?.select();
     }
+    // Close on Escape when clicking outside
     if (e.key === 'Escape' && this.searchFocused()) {
       this.closeSearch();
     }
@@ -749,10 +695,10 @@ export class TopbarComponent implements OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(e: MouseEvent): void {
     const target = e.target as Node;
-    if (this.searchFocused() && !this.el.nativeElement.querySelector('.cmd')?.contains(target)) {
+    if (this.searchFocused() && !this.el.nativeElement.querySelector('.topbar-search')?.contains(target)) {
       this.searchFocused.set(false);
     }
-    if (this.showNotifications() && !this.el.nativeElement.querySelector('.notif-wrap')?.contains(target)) {
+    if (this.showNotifications() && !this.el.nativeElement.querySelector('.notification-wrapper')?.contains(target)) {
       this.showNotifications.set(false);
     }
   }
@@ -771,7 +717,7 @@ export class TopbarComponent implements OnDestroy {
     this.searchQuery.set('');
     this.searchResults.set([]);
     this.activeIndex.set(-1);
-    const input = this.el.nativeElement.querySelector('.cmd-input') as HTMLInputElement | null;
+    const input = this.el.nativeElement.querySelector('.search-input') as HTMLInputElement | null;
     if (input) input.value = '';
   }
 
@@ -781,6 +727,7 @@ export class TopbarComponent implements OnDestroy {
     (document.activeElement as HTMLElement)?.blur();
   }
 
+  // Keyboard navigation in dropdown
   snippetResults(): SearchHit[] { return this.searchResults().filter(h => h.type === 'snippet'); }
   payloadResults(): SearchHit[] { return this.searchResults().filter(h => h.type === 'payload'); }
   toolResults(): SearchHit[] { return this.searchResults().filter(h => h.type === 'tool'); }
@@ -844,13 +791,5 @@ export class TopbarComponent implements OnDestroy {
         this.router.navigate(['/search'], { queryParams: { tag: hit.title } });
         break;
     }
-  }
-
-  initials(name: string | undefined): string {
-    if (!name) return '?';
-    const parts = name.trim().split(/[\s._-]+/).filter(Boolean);
-    if (parts.length === 0) return name.slice(0, 2).toUpperCase();
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 }
