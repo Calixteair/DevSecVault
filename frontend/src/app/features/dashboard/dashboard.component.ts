@@ -653,10 +653,11 @@ export class DashboardComponent implements OnInit {
   private clockHandle: ReturnType<typeof setInterval> | null = null;
 
   readonly suggestions: readonly CmdSuggestion[] = [
-    { kbd: '⌘N', verb: 'new',    detail: 'Créer un snippet',          target: 'dev-library',   path: '/dev-library',   icon: 'plus' },
-    { kbd: '⌘P', verb: 'new',    detail: 'Créer un payload chiffré',  target: 'cyber-toolbox', path: '/cyber-toolbox', icon: 'plus' },
-    { kbd: '⌘S', verb: 'share',  detail: 'Partager un secret E2E',    target: 'secure-bridge', path: '/secure-bridge', icon: 'share-2' },
-    { kbd: '⌘K', verb: 'search', detail: 'Chercher dans le coffre',   target: 'global',        path: '/search',        icon: 'search' },
+    { kbd: '⌘K',  verb: 'search', detail: 'Chercher dans le coffre',     target: 'global',        path: '/search',        icon: 'search' },
+    { kbd: 'g l', verb: 'goto',   detail: 'Ouvrir la Dev Library',       target: 'dev-library',   path: '/dev-library',   icon: 'code' },
+    { kbd: 'g c', verb: 'goto',   detail: 'Ouvrir la Cyber Toolbox',     target: 'cyber-toolbox', path: '/cyber-toolbox', icon: 'wrench' },
+    { kbd: 'g b', verb: 'goto',   detail: 'Ouvrir le Secure Bridge',     target: 'secure-bridge', path: '/secure-bridge', icon: 'send' },
+    { kbd: 'g i', verb: 'goto',   detail: 'Ouvrir les IT Tools',         target: 'it-tools',      path: '/it-tools',      icon: 'hammer' },
   ];
 
   readonly moduleRows = computed<ModuleRow[]>(() => {
