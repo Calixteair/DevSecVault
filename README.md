@@ -1,25 +1,46 @@
 <div align="center">
 
-  # 🛡️ DevSecVault
+  <img src="https://raw.githubusercontent.com/Calixteair/DevSecVault/master/frontend/public/icons/favicon.svg" alt="DevSecVault" width="96" />
 
-  <p><strong>Coffre-fort cybersec auto-hébergé pour développeurs et professionnels de la sécurité.</strong></p>
-  <p>Snippets multi-langages, payloads chiffrés AES-256, partage de secrets E2E, IT Tools 100 % côté navigateur.</p>
+  # DevSecVault
+
+  ### Le coffre-fort des pros de la cybersec.
 
   <p>
-    <a href="https://vault.calixteair.fr"><strong>🌐 vault.calixteair.fr</strong></a> ·
-    <a href="#-démarrage-rapide">🚀 Quickstart</a> ·
-    <a href="#-modules">🧩 Modules</a> ·
-    <a href="#-stack-technique">⚙️ Stack</a>
+    <em>Snippets · Payloads chiffrés · Partage de secrets E2E · IT Tools client-side</em><br/>
+    <strong>Auto-hébergé · Zéro tracking · RGPD-friendly · Zero-knowledge by design</strong>
+  </p>
+
+  <p>
+    <a href="https://vault.calixteair.fr"><img src="https://img.shields.io/badge/▶_demo_live-vault.calixteair.fr-22C55E?style=for-the-badge&logoColor=white" alt="Live demo" /></a>
+  </p>
+
+  <p>
+    <a href="#-démarrage-rapide">Quickstart</a> ·
+    <a href="#-modules">Modules</a> ·
+    <a href="#%EF%B8%8F-architecture">Architecture</a> ·
+    <a href="SECURITY.md">Sécurité</a> ·
+    <a href="ROADMAP.md">Roadmap</a>
   </p>
 
   <br/>
 
-  [![Build & Push](https://github.com/Calixteair/DevSecVault/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/Calixteair/DevSecVault/actions/workflows/build-and-push.yml)
-  [![Frontend](https://img.shields.io/website?url=https%3A%2F%2Fvault.calixteair.fr&label=frontend&style=flat-square)](https://vault.calixteair.fr)
-  [![API](https://img.shields.io/website?url=https%3A%2F%2Fvaultapi.calixteair.fr%2Fapi%2Fhealth&label=api&style=flat-square)](https://vaultapi.calixteair.fr/api/health)
-  [![Keycloak 26.5](https://img.shields.io/badge/Keycloak-26.5-4D4D4D?style=flat-square&logo=keycloak)](https://auth.calixteair.fr/realms/devsecvault)
-  [![Angular 21](https://img.shields.io/badge/Angular-21-DD0031?style=flat-square&logo=angular)](https://angular.dev)
-  [![Symfony 8](https://img.shields.io/badge/Symfony-8-000000?style=flat-square&logo=symfony)](https://symfony.com)
+  <p>
+    <a href="https://github.com/Calixteair/DevSecVault/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/Calixteair/DevSecVault/build-and-push.yml?style=flat-square&label=build&logo=githubactions&logoColor=white" alt="Build" /></a>
+    <a href="https://vault.calixteair.fr"><img src="https://img.shields.io/website?url=https%3A%2F%2Fvault.calixteair.fr&style=flat-square&label=frontend&up_color=22C55E" alt="Frontend status" /></a>
+    <a href="https://vaultapi.calixteair.fr/api/health"><img src="https://img.shields.io/website?url=https%3A%2F%2Fvaultapi.calixteair.fr%2Fapi%2Fhealth&style=flat-square&label=api&up_color=22C55E" alt="API status" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT" /></a>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/Angular-21-DD0031?style=flat-square&logo=angular&logoColor=white" alt="Angular 21" />
+    <img src="https://img.shields.io/badge/Symfony-8-000000?style=flat-square&logo=symfony&logoColor=white" alt="Symfony 8" />
+    <img src="https://img.shields.io/badge/PHP-8.3-777BB4?style=flat-square&logo=php&logoColor=white" alt="PHP 8.3" />
+    <img src="https://img.shields.io/badge/Keycloak-26.5-4D4D4D?style=flat-square&logo=keycloak&logoColor=white" alt="Keycloak 26.5" />
+    <img src="https://img.shields.io/badge/Meilisearch-1.x-FF5CAA?style=flat-square&logo=meilisearch&logoColor=white" alt="Meilisearch" />
+    <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL 16" />
+    <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose" />
+  </p>
 
 </div>
 
