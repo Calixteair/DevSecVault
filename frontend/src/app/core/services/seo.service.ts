@@ -3,7 +3,7 @@ import { Title, Meta } from '@angular/platform-browser';
 import { DOCUMENT } from '@angular/common';
 
 const SITE_NAME = 'DevSecVault';
-const ORIGIN = 'https://vault.calixteair.fr';
+const ORIGIN = 'https://vault.calixteair.fr:4443';
 const DEFAULT_OG_IMAGE = `${ORIGIN}/icons/og-image.png`;
 const DEFAULT_DESCRIPTION =
   'Plateforme cybersec auto-hébergée : bibliothèque de snippets, payloads chiffrés AES-256, partage de secrets E2E, IT Tools 100 % client. RGPD-friendly, sans cookie tiers.';

@@ -119,7 +119,7 @@ const icons = { Settings, Sun, Moon, Shield, Bell, User, ExternalLink, Info, Pal
                   <span class="setting-hint">Manage password via Keycloak account console</span>
                 </div>
                 <a
-                  href="https://auth.calixteair.fr/realms/devsecvault/account/"
+                  href="https://auth.calixteair.fr:4443/realms/devsecvault/account/"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="link-btn"
