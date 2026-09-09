@@ -112,6 +112,14 @@ export const TOOLS: ToolDef[] = [
     load: () => import('./tools/subnet.component').then(m => m.SubnetComponent),
   },
   {
+    slug: 'vlsm',
+    title: 'VLSM Calculator',
+    description: 'Split a network into variable-length subnets by host count',
+    icon: 'split',
+    category: 'network',
+    load: () => import('./tools/vlsm.component').then(m => m.VlsmComponent),
+  },
+  {
     slug: 'ipv4-int',
     title: 'IPv4 ↔ Integer',
     description: 'Convert IPv4 addresses to/from 32-bit integers',

@@ -24,6 +24,7 @@ const icons = {
   Fingerprint: Lucide.Fingerprint,
   KeyRound: Lucide.KeyRound,
   ShieldCheck: Lucide.ShieldCheck,
+  Split: Lucide.Split,
   ArrowRightLeft: Lucide.ArrowRightLeft,
   Radio: Lucide.Radio,
   Link: Lucide.Link,
