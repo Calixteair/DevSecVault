@@ -32,8 +32,9 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  *  - MAX_TEAMS_PER_USER: a user may belong to at most 10 teams.
  *  - MAX_MEMBERS_PER_TEAM: a team may hold at most 5 members (lead included).
  *
- * The "lead" role is sourced from TeamMember.role (not Team.owner). Team.owner
- * remains the original creator for audit; lead can be transferred independently.
+ * The "lead" role is sourced from TeamMember.role. Team.owner always tracks the
+ * current lead: transferLead() moves both together, because account deletion
+ * purges teams by owner.
  */
 #[Route('/api/teams', name: 'api_teams_')]
 final class TeamController extends AbstractController
