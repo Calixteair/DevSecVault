@@ -60,7 +60,7 @@ services:
       - /app/node_modules
     ports:
       - "${ANGULAR_PORT:-4200}:4200"
-    command: npx ng serve --host 0.0.0.0 --poll 2000
+    command: pnpm exec ng serve --host 0.0.0.0 --poll 2000
     networks:
       - dsv-internal
       - proxy-network
