@@ -26,7 +26,6 @@
   <br/>
 
   <p>
-    <a href="https://github.com/Calixteair/DevSecVault/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/Calixteair/DevSecVault/build-and-push.yml?style=flat-square&label=build&logo=githubactions&logoColor=white" alt="Build" /></a>
     <a href="https://vault.calixteair.fr"><img src="https://img.shields.io/website?url=https%3A%2F%2Fvault.calixteair.fr&style=flat-square&label=frontend&up_color=22C55E" alt="Frontend status" /></a>
     <a href="https://vaultapi.calixteair.fr/api/health"><img src="https://img.shields.io/website?url=https%3A%2F%2Fvaultapi.calixteair.fr%2Fapi%2Fhealth&style=flat-square&label=api&up_color=22C55E" alt="API status" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT" /></a>

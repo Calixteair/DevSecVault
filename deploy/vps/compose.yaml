@@ -3,7 +3,7 @@ services:
   # Nginx API (reverse proxy FastCGI -> PHP-FPM)
   # ---------------------------------------------------------------------------
   api:
-    image: ${DOCKERHUB_USERNAME}/devsecvault-api:latest
+    image: registry.calixteair.fr/devsecvault/devsecvault:api-latest
     container_name: dsv-api
     restart: unless-stopped
     depends_on:
@@ -13,12 +13,17 @@ services:
     networks:
       - dsv-internal
       - nginx-reverse-proxy
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "24"
 
   # ---------------------------------------------------------------------------
   # PHP-FPM (Symfony 8)
   # ---------------------------------------------------------------------------
   php:
-    image: ${DOCKERHUB_USERNAME}/devsecvault-backend:latest
+    image: registry.calixteair.fr/devsecvault/devsecvault:backend-latest
     container_name: dsv-php
     restart: unless-stopped
     depends_on:
@@ -30,37 +35,48 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dsv-postgres:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8"
       APP_ENV: "prod"
       APP_SECRET: "${APP_SECRET}"
+      ENCRYPTION_KEY: ""
       KEYCLOAK_URL: "https://auth.calixteair.fr"
       KEYCLOAK_REALM: "${KEYCLOAK_REALM}"
       KEYCLOAK_CLIENT_ID: "${KEYCLOAK_CLIENT_ID}"
       MEILI_URL: "http://dsv-meilisearch:7700"
+      MEILI_PUBLIC_URL: "https://vaultapi.calixteair.fr/meili"
       MEILI_MASTER_KEY: "${MEILI_MASTER_KEY}"
-      CORS_ALLOW_ORIGIN: "^https://vault\\.calixteair\\.fr$$"
+      CORS_ALLOW_ORIGIN: '^https://vault\.calixteair\.fr$$'
       MAILER_DSN: "${MAILER_DSN}"
       REPORT_NOTIFY_FROM: "${REPORT_NOTIFY_FROM}"
       REPORT_NOTIFY_TO: "${REPORT_NOTIFY_TO}"
       APP_PUBLIC_URL: "${APP_PUBLIC_URL}"
       REPORT_IP_HASH_SALT: "${REPORT_IP_HASH_SALT}"
-    labels:
-      ofelia.enabled: "true"
-      ofelia.job-exec.purge.schedule: "@every 5m"
-      ofelia.job-exec.purge.command: "php bin/console app:purge-expired"
+    volumes:
+      - /run/devsecvault/prod.decrypt.private.php:/var/www/backend/config/secrets/prod/prod.decrypt.private.php:ro
     security_opt:
       - no-new-privileges:true
     networks:
       - dsv-internal
+      - nginx-reverse-proxy
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "24"
 
   # ---------------------------------------------------------------------------
   # Angular (production build served by nginx)
   # ---------------------------------------------------------------------------
   frontend:
-    image: ${DOCKERHUB_USERNAME}/devsecvault-frontend:latest
+    image: registry.calixteair.fr/devsecvault/devsecvault:frontend-latest
     container_name: dsv-frontend
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     networks:
       - nginx-reverse-proxy
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "24"
 
   # ---------------------------------------------------------------------------
   # PostgreSQL
@@ -103,27 +119,7 @@ services:
       - no-new-privileges:true
     networks:
       - dsv-internal
-
-  # ---------------------------------------------------------------------------
-  # Ofelia — in-stack scheduler that runs `app:purge-expired` every 5 minutes
-  # via `docker exec` against the PHP container (labels declared on `php`).
-  # Read-only filesystem + no new privileges; only the docker socket is
-  # mounted (read-only) so it can list containers and start the exec.
-  # ---------------------------------------------------------------------------
-  ofelia:
-    image: mcuadros/ofelia:latest
-    container_name: dsv-ofelia
-    depends_on:
-      - php
-    restart: unless-stopped
-    networks:
-      - dsv-internal
-    command: daemon --docker
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
+      - nginx-reverse-proxy
 
 volumes:
   postgres_data:
