@@ -98,7 +98,7 @@ const FAQ_ITEMS: Faq[] = [
           <p class="hero-pitch">
             Snippets multi-langages, payloads chiffrés AES-256, partage de secrets
             E2E, IT Tools 100 % côté navigateur.
-            <strong>Aucun cookie tiers, zéro tracking, données hébergées en France.</strong>
+            <strong>Aucun cookie tiers, zéro tracking, données hébergées dans l'UE.</strong>
           </p>
           <div class="hero-cta">
             @if (isAuthenticated()) {
@@ -186,8 +186,8 @@ const FAQ_ITEMS: Faq[] = [
           </div>
           <div class="trust-item">
             <lucide-icon name="server-cog" [size]="22" [strokeWidth]="2" class="trust-icon"></lucide-icon>
-            <h3>Hébergement français</h3>
-            <p>VPS Hostinger, datacenter France. Aucun CDN ni anti-DDoS tiers. Aucun transfert hors UE depuis nos serveurs.</p>
+            <h3>Hébergement européen</h3>
+            <p>VPS netcup, datacenter en Allemagne. Aucun CDN ni anti-DDoS tiers. Aucun transfert hors UE depuis nos serveurs.</p>
           </div>
           <div class="trust-item">
             <lucide-icon name="shield" [size]="22" [strokeWidth]="2" class="trust-icon"></lucide-icon>
@@ -537,7 +537,7 @@ export class LandingComponent implements OnInit {
   ngOnInit(): void {
     this.seo.apply({
       title: 'Coffre-fort cybersec auto-hébergé',
-      description: 'DevSecVault : bibliothèque de snippets cybersec, payloads chiffrés AES-256, partage de secrets E2E, IT Tools 100 % côté navigateur. RGPD-friendly, hébergé en France, sans tracking.',
+      description: 'DevSecVault : bibliothèque de snippets cybersec, payloads chiffrés AES-256, partage de secrets E2E, IT Tools 100 % côté navigateur. RGPD-friendly, hébergé en Union européenne, sans tracking.',
       path: '/',
     });
   }

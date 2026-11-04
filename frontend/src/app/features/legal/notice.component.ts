@@ -45,11 +45,12 @@ import { LegalShellComponent } from './legal-shell.component';
 
       <h2>Hébergeur</h2>
       <p>
-        Hostinger International Ltd.<br />
-        61 Lordou Vironos Street, 6023 Larnaca, Chypre.<br />
-        Contact : via le panneau client Hostinger
-        (<a href="https://www.hostinger.com" target="_blank" rel="noopener">hostinger.com</a>).<br />
-        VPS situé en Europe.
+        netcup GmbH<br />
+        Daimlerstraße 25, 76185 Karlsruhe, Allemagne.<br />
+        Amtsgericht Mannheim, HRB 705547.<br />
+        Contact : via le panneau client netcup
+        (<a href="https://www.netcup.com" target="_blank" rel="noopener">netcup.com</a>).<br />
+        VPS situé en Allemagne (datacenter de Nuremberg).
       </p>
 
       <h2>Adresse de signalement</h2>
