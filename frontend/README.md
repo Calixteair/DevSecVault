@@ -152,12 +152,12 @@ docker compose up --build -d
 
 # Standalone (necessite Node 22+)
 cd frontend
-npm install
-npx ng serve --host 0.0.0.0
+pnpm install
+pnpm exec ng serve --host 0.0.0.0
 ```
 
 ## 📦 Build de production
 
 Build Docker multi-stage (`docker/node/Dockerfile.prod`) :
-1. `npm ci` + `ng build` avec config production (pas de source maps, controle des budgets)
+1. `pnpm install --frozen-lockfile` + `ng build` avec config production (pas de source maps, controle des budgets)
 2. Sortie servie par nginx avec fallback SPA routing
