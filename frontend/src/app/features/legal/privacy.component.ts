@@ -10,7 +10,7 @@ import { LegalShellComponent } from './legal-shell.component';
   standalone: true,
   imports: [LegalShellComponent, RouterLink],
   template: `
-    <app-legal-shell title="Politique de confidentialité" description="Politique de confidentialité RGPD de DevSecVault : données collectées, finalités, conservation, droits des utilisateurs, hébergement Hostinger France.">
+    <app-legal-shell title="Politique de confidentialité" description="Politique de confidentialité RGPD de DevSecVault : données collectées, finalités, conservation, droits des utilisateurs, hébergement netcup Allemagne.">
       <h2>Préambule</h2>
       <p>
         DevSecVault traite des données personnelles dans le respect du
@@ -193,9 +193,9 @@ import { LegalShellComponent } from './legal-shell.component';
       <h2>8. Sous-traitants et hébergement</h2>
       <ul>
         <li>
-          <strong>Hostinger International Ltd.</strong> — hébergement du VPS
-          qui exécute l'ensemble du service, datacenter situé en
-          <strong>France</strong>.
+          <strong>netcup GmbH</strong> (Karlsruhe, Allemagne) — hébergement du
+          VPS qui exécute l'ensemble du service, datacenter situé en
+          <strong>Allemagne</strong> (Nuremberg).
         </li>
         <li>
           <strong>PayPal (Europe) S.à r.l. et Cie, S.C.A.</strong>
@@ -208,7 +208,7 @@ import { LegalShellComponent } from './legal-shell.component';
       </ul>
       <p>
         Les données utilisateur sont hébergées <strong>en Union européenne
-        (France)</strong>. DevSecVault ne fait appel à aucun CDN ni
+        (Allemagne)</strong>. DevSecVault ne fait appel à aucun CDN ni
         anti-DDoS tiers, et n'effectue aucun transfert hors UE depuis ses
         propres serveurs.
       </p>

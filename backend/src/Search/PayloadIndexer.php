@@ -38,7 +38,7 @@ class PayloadIndexer
         $this->meili->ensureIndex(self::INDEX, self::PRIMARY_KEY, [
             // NOTE: NEVER add `body` / `bodyEncrypted` here.
             'searchableAttributes' => ['title', 'description', 'tags', 'category', 'language'],
-            'filterableAttributes' => ['visibility', 'owner_id', 'category', 'language', 'tags', 'team_ids'],
+            'filterableAttributes' => ['visibility', 'owner_id', 'category', 'language', 'tags', 'team_ids', 'moderation_status'],
             'sortableAttributes' => ['updated_at'],
             'rankingRules' => [
                 'words',
@@ -107,6 +107,9 @@ class PayloadIndexer
             'visibility' => $payload->getVisibility(),
             'owner_id' => (string) $payload->getOwner()->getId(),
             'team_ids' => $teamIds,
+            // Lets the tenant token hide moderated content from everyone but the
+            // owner. Without it, a hidden/removed payload stays searchable.
+            'moderation_status' => $payload->getModerationStatus(),
             'updated_at' => $payload->getUpdatedAt()->getTimestamp(),
         ];
     }
