@@ -31,7 +31,7 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_started
-    environment:
+    environment: &backend-env
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dsv-postgres:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8"
       APP_ENV: "prod"
       APP_SECRET: "${APP_SECRET}"
@@ -48,7 +48,7 @@ services:
       REPORT_NOTIFY_TO: "${REPORT_NOTIFY_TO}"
       APP_PUBLIC_URL: "${APP_PUBLIC_URL}"
       REPORT_IP_HASH_SALT: "${REPORT_IP_HASH_SALT}"
-    volumes:
+    volumes: &backend-volumes
       - /run/devsecvault/prod.decrypt.private.php:/var/www/backend/config/secrets/prod/prod.decrypt.private.php:ro
     security_opt:
       - no-new-privileges:true
@@ -60,6 +60,32 @@ services:
       options:
         max-size: "50m"
         max-file: "24"
+
+  # ---------------------------------------------------------------------------
+  # Purge des données expirées (app:purge-expired toutes les 5 minutes) : liens de secret et
+  # entrées du coffre expirés, jetons d'API expirés depuis 30 jours, signalements traités depuis
+  # un an. Même image et même environnement que php ; pas de socket Docker (remplace ofelia).
+  # Point d'entrée remplacé : les migrations restent faites par php, une seule fois.
+  # ---------------------------------------------------------------------------
+  purge:
+    image: registry.calixteair.fr/devsecvault/devsecvault:backend-latest
+    container_name: dsv-purge
+    restart: unless-stopped
+    depends_on:
+      - php
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["while :; do php bin/console app:purge-expired --no-interaction || echo 'purge en échec'; sleep 300; done"]
+    environment: *backend-env
+    volumes: *backend-volumes
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - dsv-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # ---------------------------------------------------------------------------
   # Angular (production build served by nginx)
