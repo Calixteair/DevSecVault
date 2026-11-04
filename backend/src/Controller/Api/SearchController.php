@@ -80,28 +80,37 @@ final class SearchController extends AbstractController
     /**
      * Build per-index search rules.
      *
-     * Guest: only public content.
-     * Authenticated: public content OR their own private content OR anything
-     * shared with a team they belong to. `team_ids` is an array attribute on
-     * each indexed document; Meilisearch's `=` operator against array fields
-     * matches any element, which is exactly the semantics we want.
+     * Guest: only public, non-moderated content.
+     * Authenticated: public/team content that is non-moderated, OR anything
+     * they own (owner keeps visibility on their own moderated content, matching
+     * PayloadVoter/SnippetVoter). `team_ids` is an array attribute on each
+     * indexed document; Meilisearch's `=` operator against array fields matches
+     * any element, which is exactly the semantics we want.
+     *
+     * Moderation: `moderation_status` is indexed on every document (see the
+     * indexers). A payload/concept hidden or removed by an admin is excluded
+     * from search for everyone but its owner — otherwise its metadata (title,
+     * description, tags) would stay discoverable despite the REST API hiding it.
      *
      * @return array<string, array<string, mixed>>
      */
     private function buildSearchRules(?object $user): array
     {
+        $active = 'moderation_status = active';
+
         if ($user instanceof User && $user->getId() !== null) {
             $uid = (string) $user->getId();
             $clauses = [
-                'visibility = public',
+                sprintf('(visibility = public AND %s)', $active),
+                // Owner sees their own content regardless of moderation status.
                 sprintf('owner_id = "%s"', $uid),
             ];
             foreach ($this->teamMemberRepo->findTeamsForUser($user) as $team) {
-                $clauses[] = sprintf('team_ids = "%s"', (string) $team->getId());
+                $clauses[] = sprintf('(team_ids = "%s" AND %s)', (string) $team->getId(), $active);
             }
             $filter = implode(' OR ', $clauses);
         } else {
-            $filter = 'visibility = public';
+            $filter = sprintf('visibility = public AND %s', $active);
         }
 
         return [

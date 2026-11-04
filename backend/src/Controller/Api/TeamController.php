@@ -299,6 +299,13 @@ final class TeamController extends AbstractController
         $currentMembership->setRole(TeamMember::ROLE_MEMBER);
         $targetMembership->setRole(TeamMember::ROLE_LEAD);
 
+        // Transfer ownership alongside the lead role. Otherwise Team.owner stays
+        // on the original creator even after they become a plain member, and
+        // AccountDeletionService (which purges teams by `owner`) would let that
+        // ex-creator destroy the whole team on account deletion. Owner must
+        // always track the current lead.
+        $team->setOwner($targetMembership->getUser());
+
         $this->entityManager->flush();
 
         return $this->json($this->serializeTeamWithRole($team, $user, 'team:read'));

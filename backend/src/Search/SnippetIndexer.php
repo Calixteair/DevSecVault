@@ -46,7 +46,7 @@ class SnippetIndexer
             // What users can type against
             'searchableAttributes' => ['title', 'description', 'language', 'tags'],
             // What the tenant token rules (and UI filters) can filter on
-            'filterableAttributes' => ['visibility', 'owner_id', 'language', 'tags', 'concept_id', 'team_ids'],
+            'filterableAttributes' => ['visibility', 'owner_id', 'language', 'tags', 'concept_id', 'team_ids', 'moderation_status'],
             'sortableAttributes' => ['updated_at'],
             // Title matters more than a stray word in the description
             'rankingRules' => [
@@ -126,6 +126,15 @@ class SnippetIndexer
             $tags[] = $tag->getName();
         }
 
+        // Effective moderation status = the most restrictive of the snippet's
+        // own status and its parent concept's. An admin can moderate either a
+        // whole concept or a single snippet (AdminReportController), and the
+        // snippet must drop out of search if EITHER is hidden/removed — mirrors
+        // SnippetVoter, which evaluates the snippet's own status first.
+        $moderationStatus = ($snippet->getModerationStatus() !== 'active')
+            ? $snippet->getModerationStatus()
+            : $concept->getModerationStatus();
+
         // Team scoping: inherit the parent Concept's sharedTeams so a Meili
         // tenant-token filter `team_ids = "<tid>"` matches for every team the
         // concept (and therefore every child snippet) is shared with.
@@ -144,6 +153,10 @@ class SnippetIndexer
             'visibility' => $concept->getVisibility(),
             'owner_id' => (string) $concept->getOwner()->getId(),
             'team_ids' => $teamIds,
+            // Most restrictive of the snippet's own status and its concept's
+            // (computed above). Hiding either removes the snippet from search
+            // for everyone but the owner (see SearchController rules).
+            'moderation_status' => $moderationStatus,
             'updated_at' => $snippet->getUpdatedAt()->getTimestamp(),
         ];
     }
