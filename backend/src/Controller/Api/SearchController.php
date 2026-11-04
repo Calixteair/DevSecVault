@@ -81,9 +81,9 @@ final class SearchController extends AbstractController
      * Build per-index search rules.
      *
      * Guest: only public, non-moderated content.
-     * Authenticated: public/team content that is non-moderated, OR anything
-     * they own (owner keeps visibility on their own moderated content, matching
-     * PayloadVoter/SnippetVoter). `team_ids` is an array attribute on each
+     * Authenticated: public/team content that is non-moderated, OR their own
+     * content unless removed (owner keeps flagged/hidden, `removed` is
+     * admin-only, matching PayloadVoter/SnippetVoter). `team_ids` is an array attribute on each
      * indexed document; Meilisearch's `=` operator against array fields matches
      * any element, which is exactly the semantics we want.
      *
@@ -102,8 +102,8 @@ final class SearchController extends AbstractController
             $uid = (string) $user->getId();
             $clauses = [
                 sprintf('(visibility = public AND %s)', $active),
-                // Owner sees their own content regardless of moderation status.
-                sprintf('owner_id = "%s"', $uid),
+                // Owner sees their own flagged/hidden content, not removed.
+                sprintf('(owner_id = "%s" AND moderation_status != removed)', $uid),
             ];
             foreach ($this->teamMemberRepo->findTeamsForUser($user) as $team) {
                 $clauses[] = sprintf('(team_ids = "%s" AND %s)', (string) $team->getId(), $active);
