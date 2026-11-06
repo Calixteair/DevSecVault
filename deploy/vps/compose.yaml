@@ -132,7 +132,7 @@ services:
   # Meilisearch
   # ---------------------------------------------------------------------------
   meilisearch:
-    image: getmeili/meilisearch:v1.13
+    image: getmeili/meilisearch:v1.56.1
     container_name: dsv-meilisearch
     restart: unless-stopped
     environment:
